@@ -1,8 +1,10 @@
 
 use crate::director::jrust_tree::{JsRustId, JsRustInstance, JsRustTree};
+use crate::dom::document::Document;
 use std::process::Command;
 use std::fs;
 use std::path::PathBuf;
+use serde_json;
 
 /// Director - jrust 的指挥中心
 pub struct Director {
@@ -263,6 +265,79 @@ impl Director {
 
         println!("✅ 产品打包完成！输出目录: {:?}", output_dir);
         Ok(output_exe)
+    }
+    
+    // === Phase 2: Snap 功能 (使用 serde_json) ===
+    
+    /// 生成 DOM 的 snap（JSON 序列化）
+    pub fn generate_snap(&self, document: &Document) -> Result<Vec<u8>, String> {
+        println!("=== Director: 生成 DOM Snap ===\n");
+        
+        let json = serde_json::to_vec(document)
+            .map_err(|e| format!("Snap JSON serialization failed: {}", e))?;
+        
+        println!("✅ Snap 生成成功！大小: {} 字节", json.len());
+        Ok(json)
+    }
+    
+    /// 从 snap 恢复 DOM
+    pub fn load_snap(&self, bytes: &[u8]) -> Result<Document, String> {
+        println!("=== Director: 从 Snap 恢复 DOM ===\n");
+        
+        let document: Document = serde_json::from_slice(bytes)
+            .map_err(|e| format!("Snap JSON deserialization failed: {}", e))?;
+        
+        println!("✅ DOM 从 Snap 恢复成功！");
+        Ok(document)
+    }
+    
+    /// 保存 snap 到文件
+    pub fn save_snap_to_file(&self, document: &Document, path: &PathBuf) -> Result<(), String> {
+        let snap_bytes = self.generate_snap(document)?;
+        fs::write(path, snap_bytes)
+            .map_err(|e| format!("Save snap failed: {}", e))?;
+        println!("✅ Snap 已保存到: {:?}", path);
+        Ok(())
+    }
+    
+    /// 从文件加载 snap
+    pub fn load_snap_from_file(&self, path: &PathBuf) -> Result<Document, String> {
+        let bytes = fs::read(path)
+            .map_err(|e| format!("Load snap failed: {}", e))?;
+        self.load_snap(&bytes)
+    }
+}
+
+/// JRustApp - 自动 Snap 的应用包装器
+pub struct JRustApp {
+    pub window: crate::bom::window::Window,
+    snap_path: Option<PathBuf>,
+}
+
+impl JRustApp {
+    pub fn new() -> Self {
+        JRustApp {
+            window: crate::bom::window::Window::new(),
+            snap_path: None,
+        }
+    }
+    
+    pub fn with_snap_output<P: Into<PathBuf>>(mut self, path: P) -> Self {
+        self.snap_path = Some(path.into());
+        self
+    }
+}
+
+impl Drop for JRustApp {
+    fn drop(&mut self) {
+        if let Some(snap_path) = &self.snap_path {
+            println!("\n🛡️  JRustApp 正在销毁 - 自动生成 Snap...");
+            
+            let director = Director::new();
+            if let Ok(_) = director.save_snap_to_file(&self.window.document, snap_path) {
+                println!("✅ Snap 自动保存成功！");
+            }
+        }
     }
 }
 
