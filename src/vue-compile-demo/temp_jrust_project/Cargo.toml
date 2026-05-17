@@ -1,9 +1,0 @@
-[package]
-name = "my_jrust_app"
-version = "0.1.0"
-edition = "2021"
-
-[workspace]
-
-[dependencies]
-jrust-runtime = { path = "../../jrust-runtime" }

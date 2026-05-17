@@ -30,3 +30,5 @@ dist/
 
 # Temporary test files
 test.js
+temp_jrust_project/
+temp_input.js
