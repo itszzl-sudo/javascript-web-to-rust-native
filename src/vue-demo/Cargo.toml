@@ -1,0 +1,13 @@
+[package]
+name = "vue-demo"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "vue-demo"
+path = "src/main.rs"
+
+[dependencies]
+jrust-runtime = { path = "../jrust-runtime" }
+serde = { workspace = true, features = ["derive"] }
+rkyv = { workspace = true }

@@ -1,0 +1,29 @@
+
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+.DS_Store
+
+# Build artifacts
+# Don't ignore Cargo.lock for workspaces, it helps with reproducible builds
+# Cargo.lock
+
+# External dependencies (not part of this repo)
+swc/
+
+# Node modules
+node_modules/
+
+# Build outputs (dist directories)
+dist/

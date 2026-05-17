@@ -1,0 +1,22 @@
+[package]
+name = "jrust-runtime"
+version = "0.2.0"
+edition = "2021"
+authors = ["javascript2rust team"]
+license = "MIT OR Apache-2.0"
+description = "JRust runtime for Rust native applications"
+repository = "https://github.com/your-org/javascript-web-to-rust-native"
+rust-version = "1.94"
+
+[dependencies]
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+
+# Smart pointers and interior mutability
+indexmap = { workspace = true }
+hashbrown = { workspace = true }
+

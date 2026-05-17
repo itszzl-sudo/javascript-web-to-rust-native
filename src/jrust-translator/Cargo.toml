@@ -1,0 +1,23 @@
+[package]
+name = "jrust-translator"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+owo-colors.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+swc_core = { git = "https://github.com/swc-project/swc.git", rev = "4c44d5d52", features = ["ecma_parser", "common", "ecma_ast"] }
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "jrust-translator"
+path = "src/cli/main.rs"

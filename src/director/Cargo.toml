@@ -1,0 +1,8 @@
+[package]
+name = "director"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+jrust-translator = { path = "../jrust-translator" }
+jrust-runtime = { path = "../jrust-runtime" }
