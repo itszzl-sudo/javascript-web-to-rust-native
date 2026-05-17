@@ -719,3 +719,241 @@ jrust2、jrust3、jrust4、jrust5... 都收不到事件
   ↓
 事件处理完成 (仅 jrust1 响应)
 ```
+
+---
+
+## 12. Snap 与分裂架构
+
+### 12.1. 核心概念
+
+当 jrust 执行到无事可做时（静默状态），会自动进行以下操作：
+1. 保存当前的 DOM 状态为 **Snap**
+2. 将 jrust 自动分裂为两个部分：
+   - **jrusti (Initializer)**: 负责加载 Snap，初始化应用
+   - **jruste (Event Handler)**: 负责事件处理和事件循环
+
+### 12.2. Snap 架构
+
+**Snap** 是 DOM 的序列化表示，用于持久化应用状态：
+
+```rust
+// Snap 的结构
+#[derive(Serialize, Deserialize)]
+pub struct DocumentSnap {
+    pub body: ElementSnap,
+    pub title: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ElementSnap {
+    pub tag_name: String,
+    pub id: Option<String>,
+    pub class_list: Vec<String>,
+    pub attributes: HashMap<String, String>,
+    pub children: Vec<ElementSnap>,
+    pub text_content: String,
+    pub inner_html: String,
+    // 事件监听器不序列化，留在 jruste
+    #[serde(skip)]
+    pub event_listeners: HashMap<EventType, Vec<EventHandler>>,
+}
+```
+
+**Snap 的工作流程**：
+1. jrust 执行初始化，构建完整 DOM
+2. jrust 进入静默状态
+3. runtime 将 DOM 序列化为 Snap
+4. Snap 保存为文件（JSON 格式）
+
+### 12.3. 分裂架构
+
+**分裂的核心思想**：将应用分为"初始化"和"事件处理"两个阶段
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          分裂架构                                         │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ 1. 初始化阶段 (jrust)                                             │   │
+│  │    - 执行入口代码                                                 │   │
+│  │    - 构建完整 DOM                                                 │   │
+│  │    - 绑定事件监听器                                               │   │
+│  │    - 静默等待                                                    │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                              ↓ 自动分裂                                    │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ 2. 分裂阶段                                                      │   │
+│  │    - 生成 Snap: DOM 的序列化表示                                 │   │
+│  │    - 生成 jrusti: 初始化器，负责加载 Snap                        │   │
+│  │    - 生成 jruste: 事件处理器，负责事件循环                        │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                              ↓                                            │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ 3. 运行阶段                                                      │   │
+│  │    - jrusti 启动 → 加载 Snap → 初始化 DOM                       │   │
+│  │    - jrusti 退出 → jruste 启动 → 事件循环                        │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 12.4. jrusti (Initializer) 架构
+
+**jrusti 的职责**：
+1. 加载 Snap 文件
+2. 恢复 DOM 结构
+3. 准备启动 jruste
+
+```rust
+// jrusti 的示例代码
+fn main() -> Result<(), String> {
+    println!("🚀 === jrusti 启动！加载 Snap 中... === 🚀");
+    
+    let director = Director::new();
+    let snap_path = PathBuf::from("app.snap");
+    let document = director.load_snap_from_file(&snap_path)?;
+    
+    println!("✅ Snap 加载成功！DOM 已就绪！");
+    println!("   Document title: {}", document.title());
+    
+    println!("\n🚀 === jrusti 初始化完成！准备启动 jruste === 🚀");
+    Ok(())
+}
+```
+
+### 12.5. jruste (Event Handler) 架构
+
+**jruste 的职责**：
+1. 加载 Snap（可选）
+2. 事件循环
+3. 事件处理
+4. DOM 更新
+
+```rust
+// jruste 的示例代码
+fn main() -> Result<(), String> {
+    println!("🚀 === jruste 启动！加载 Snap + 处理事件 === 🚀");
+    
+    // 1. 加载 Snap
+    let director = Director::new();
+    let snap_path = PathBuf::from("app.snap");
+    let mut document = director.load_snap_from_file(&snap_path)?;
+    
+    println!("✅ Snap 加载成功！");
+    
+    // 2. 模拟事件循环
+    println!("\n--- 事件循环开始 ---");
+    println!("   按 Ctrl+C 退出...");
+    
+    // 简单的事件循环（模拟）
+    let mut counter = 0;
+    loop {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        counter += 1;
+        
+        if counter % 10 == 0 {
+            println!("🔄 事件循环中... 已处理 {} 帧", counter);
+        }
+        
+        if counter > 50 {
+            break;
+        }
+    }
+    
+    println!("\n✅ 事件循环结束！");
+    Ok(())
+}
+```
+
+### 12.6. 完整工作流示例
+
+```
+1. 初始执行阶段
+   ├─ jrust 启动
+   ├─ 执行入口代码
+   ├─ 构建 DOM
+   ├─ 绑定事件
+   └─ 进入静默状态
+
+2. 分裂阶段
+   ├─ runtime 检测到静默状态
+   ├─ 序列化 DOM → Snap
+   ├─ 生成 jrusti（初始化器）
+   ├─ 生成 jruste（事件处理器）
+   └─ 保存所有文件
+
+3. 运行阶段
+   ├─ jrusti 启动
+   ├─ 加载 Snap
+   ├─ 恢复 DOM
+   ├─ jrusti 退出
+   ├─ jruste 启动
+   ├─ 事件循环开始
+   └─ 等待并处理用户交互
+```
+
+### 12.7. 框架兼容性说明
+
+**重要**：本方案对 Vue 有效，但对其他框架需要区分对待！
+
+| 框架/项目类型 | 支持程度 | 说明 |
+|---------------|---------|------|
+| **Vue** | ✅ 完全支持 | Vue 的打包产物具有明确的"初始化完成"标志 |
+| **React** | ⚠️ 需要适配 | React 的初始化流程可能与 Vue 不同，需要额外判断 |
+| **Svelte** | ⚠️ 需要适配 | Svelte 编译产物的初始化流程也需要适配 |
+| **原生 JavaScript** | ⚠️ 需要适配 | 需要明确的"静默"判断标准 |
+| **复杂应用** | ⚠️ 需要适配 | 有后台任务、定时器、网络请求等的应用需要特殊处理 |
+
+**适用条件**：
+1. 应用有明确的"初始化完成"阶段
+2. 初始化完成后进入事件等待状态
+3. 没有持续的后台任务（或后台任务可分离）
+
+**针对不同框架的适配方案**：
+- **Vue**: 使用 `app.mount()` 完成作为标志
+- **React**: 使用 `ReactDOM.render()` 完成作为标志
+- **Svelte**: 使用组件挂载完成作为标志
+- **原生 JS**: 使用自定义的"初始化完成"标志
+
+### 12.8. 分裂的优势
+
+| 优势 | 说明 |
+|------|------|
+| **启动速度** | 直接加载 Snap，无需重新执行初始化代码 |
+| **资源占用** | 初始化代码不会留在运行时 |
+| **安全性** | 初始化阶段与事件处理阶段分离 |
+| **可维护性** | 职责明确，代码结构清晰 |
+
+---
+
+## 13. 总结
+
+### 13.1. 核心架构
+
+```
+任意前端项目
+  ↓ (打包工具)
+标准 JavaScript
+  ↓ (jrust-translator)
+Rust 代码
+  ↓ (jrust-runtime)
+jrust 应用
+  ↓ (静默时自动分裂)
+├─ jrusti (Initializer + Snap)
+└─ jruste (Event Handler)
+```
+
+### 13.2. 关键技术点
+
+| 技术点 | 说明 |
+|--------|------|
+| 转译器 | JavaScript → Rust |
+| DOM 模拟 | 完整的 DOM/BOM API |
+| Snap | DOM 序列化 |
+| 自动分裂 | jrusti + jruste |
+| 事件系统 | 完整的事件处理和事件循环 |
+
+### 13.3. 适用场景
+
+- ✅ 适用于 Vue 项目（完全支持）
+- ⚠️ 适用于其他框架（需要适配）
+- ⚠️ 适用于简单应用（无复杂后台任务）
+- ❌ 不适用于复杂后台任务应用（需要额外方案）
