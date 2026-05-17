@@ -27,3 +27,6 @@ node_modules/
 
 # Build outputs (dist directories)
 dist/
+
+# Temporary test files
+test.js
