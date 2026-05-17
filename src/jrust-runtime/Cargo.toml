@@ -16,6 +16,9 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 
+# DOM serialization (暂时禁用)
+# rkyv = { workspace = true, features = ["derive"] }
+
 # Smart pointers and interior mutability
 indexmap = { workspace = true }
 hashbrown = { workspace = true }

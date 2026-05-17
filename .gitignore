@@ -32,3 +32,6 @@ dist/
 test.js
 temp_jrust_project/
 temp_input.js
+
+# Final product
+dist/

@@ -164,13 +164,13 @@ impl Director {
     /// 编译 JRust 代码为二进制
     pub fn compile_jrust(&self, rust_code: &str, output_name: &str) -> Result<PathBuf, String> {
         println!("=== Director: 编译 JRust 为二进制 ===\n");
-        
+
         // 1. 创建临时项目目录
         let temp_project_dir = self.workdir.join("temp_jrust_project");
         let _ = fs::remove_dir_all(&temp_project_dir); // 清理旧的
         fs::create_dir_all(&temp_project_dir)
             .map_err(|e| format!("创建临时项目目录失败: {}", e))?;
-        
+
         // 2. 创建 Cargo.toml
         let cargo_toml = format!(
             "[package]\n\
@@ -186,16 +186,16 @@ impl Director {
         );
         fs::write(temp_project_dir.join("Cargo.toml"), cargo_toml)
             .map_err(|e| format!("写入 Cargo.toml 失败: {}", e))?;
-        
+
         // 3. 创建 src/main.rs
         let src_dir = temp_project_dir.join("src");
         fs::create_dir_all(&src_dir)
             .map_err(|e| format!("创建 src 目录失败: {}", e))?;
         fs::write(src_dir.join("main.rs"), rust_code)
             .map_err(|e| format!("写入 main.rs 失败: {}", e))?;
-        
+
         println!("临时项目已创建: {:?}", temp_project_dir);
-        
+
         // 4. 运行 cargo build
         println!("正在运行 cargo build...");
         let build_output = Command::new("cargo")
@@ -204,29 +204,65 @@ impl Director {
             .current_dir(&temp_project_dir)
             .output()
             .map_err(|e| format!("cargo build 失败: {}", e))?;
-        
+
         if !build_output.status.success() {
             return Err(format!(
                 "cargo build 失败:\n{}",
                 String::from_utf8_lossy(&build_output.stderr)
             ));
         }
-        
+
         // 5. 查找生成的二进制
         let exe_name = if cfg!(windows) {
             format!("{}.exe", output_name)
         } else {
             output_name.to_string()
         };
-        
+
         let target_exe = temp_project_dir.join("target/release").join(exe_name);
-        
+
         if target_exe.exists() {
             println!("✅ 编译完成，二进制文件: {:?}", target_exe);
             Ok(target_exe)
         } else {
             Err("未找到生成的二进制文件".to_string())
         }
+    }
+
+    /// 打包最终产品
+    pub fn pack_final_product(&self, exe_path: &PathBuf, output_dir: &PathBuf) -> Result<PathBuf, String> {
+        println!("=== Director: 打包最终产品 ===\n");
+
+        // 1. 创建输出目录
+        fs::create_dir_all(output_dir)
+            .map_err(|e| format!("创建输出目录失败: {}", e))?;
+
+        // 2. 复制 exe 到输出目录
+        let output_exe = output_dir.join(exe_path.file_name().unwrap());
+        fs::copy(exe_path, &output_exe)
+            .map_err(|e| format!("复制可执行文件失败: {}", e))?;
+
+        // 3. 创建 README
+        let readme = format!(
+            "# {}\n\
+            \n\
+            这是一个由 Director 生成的 JRust 应用！\n\
+            \n\
+            ## 运行\n\
+            直接执行可执行文件即可。\n\
+            \n\
+            ## 技术栈\n\
+            - 输入：真实 Vue 项目\n\
+            - 翻译：jrust-translator\n\
+            - 运行时：jrust-runtime\n\
+            - 打包：Director\n",
+            exe_path.file_stem().unwrap().to_str().unwrap()
+        );
+        fs::write(output_dir.join("README.md"), readme)
+            .map_err(|e| format!("写入 README 失败: {}", e))?;
+
+        println!("✅ 产品打包完成！输出目录: {:?}", output_dir);
+        Ok(output_exe)
     }
 }
 
