@@ -957,3 +957,399 @@ jrust 应用
 - ⚠️ 适用于其他框架（需要适配）
 - ⚠️ 适用于简单应用（无复杂后台任务）
 - ❌ 不适用于复杂后台任务应用（需要额外方案）
+
+---
+
+## 14. Servo 集成架构
+
+### 14.1. 核心设计原则
+
+**不使用 Servo 的默认行为**：
+- ❌ 取消默认首页加载
+- ❌ 取消书签栏加载
+- ❌ 取消 Cookie 加载
+- ❌ 取消 LocalStorage 加载
+- ✅ 直接注入 Snap DOM
+
+**核心方案**：
+1. 使用 Snap 作为唯一的初始 DOM 来源
+2. 建立 Servo event ↔ jruste 的双向通信
+3. jruste 负责事件处理和 DOM 更新
+4. Servo 负责纯渲染
+
+---
+
+### 14.2. 整体架构图
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        jruste (事件处理器)                        │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  • 事件处理逻辑                                           │   │
+│  │  • DOM 更新逻辑                                           │   │
+│  │  • 业务逻辑                                               │   │
+│  └──────────────────────┬──────────────────────────────────┘   │
+│                         │                                     │
+│                         │ (双向通信)                            │
+│                         ▼                                     │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │              Servo 集成层 (jrust-servo-bridge)            │   │
+│  │  ┌───────────────────────────────────────────────────┐   │
+│  │  │  • Snap → Servo DOM 转换                           │   │
+│  │  │  • Servo Event → jruste Event 转发                 │   │
+│  │  │  • jruste DOM Update → Servo DOM 应用              │   │
+│  │  └───────────────────────────────────────────────────┘   │
+│  └──────────────────────┬──────────────────────────────────┘   │
+│                         │                                     │
+│                         ▼                                     │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                      Servo (渲染引擎)                     │   │
+│  │  ┌───────────────────────────────────────────────────┐   │
+│  │  │  • DOM 树                                          │   │
+│  │  │  • 样式计算                                        │   │
+│  │  │  • 布局                                            │   │
+│  │  │  • WebRender 渲染                                  │   │
+│  │  └───────────────────────────────────────────────────┘   │
+│  └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 14.3. 启动流程
+
+#### 完整启动流程
+
+```
+1. 加载 Snap
+   ↓
+2. 转换 Snap → Servo DOM
+   ↓
+3. 初始化 Servo（不加载默认首页）
+   ↓
+4. 将 Snap DOM 注入 Servo
+   ↓
+5. 建立事件通信通道
+   ↓
+6. jruste 启动，进入事件循环
+   ↓
+7. Servo 渲染界面
+```
+
+#### Servo 初始化配置
+
+```rust
+// Servo 初始化配置
+struct ServoConfig {
+    // 禁用默认首页
+    load_default_page: false,
+    
+    // 禁用书签栏
+    enable_bookmarks: false,
+    
+    // 禁用 Cookie
+    enable_cookies: false,
+    
+    // 禁用 LocalStorage
+    enable_local_storage: false,
+    
+    // 初始 DOM（来自 Snap）
+    initial_dom: Option<ServoDom>,
+}
+```
+
+---
+
+### 14.4. Snap 注入 Servo
+
+#### 数据结构映射
+
+| Snap 类型 | Servo 类型 |
+|----------|-----------|
+| `Document` | `servo::dom::Document` |
+| `Element` | `servo::dom::Element` |
+| `Text` | `servo::dom::Text` |
+| `Attribute` | `servo::dom::Attribute` |
+
+#### 转换流程
+
+```rust
+// Snap → Servo DOM 转换
+fn snap_to_servo_dom(snap: &DocumentSnap) -> Result<ServoDom, Error> {
+    // 1. 创建 Document
+    let doc = ServoDocument::new();
+    
+    // 2. 转换 Body
+    let body = snap_to_servo_element(&snap.body, &doc)?;
+    doc.set_body(body);
+    
+    // 3. 设置标题
+    doc.set_title(&snap.title);
+    
+    Ok(ServoDom(doc))
+}
+
+// Element 转换
+fn snap_to_servo_element(
+    snap: &ElementSnap, 
+    doc: &ServoDocument
+) -> Result<ServoElement, Error> {
+    // 1. 创建 Element
+    let elem = doc.create_element(&snap.tag_name)?;
+    
+    // 2. 设置 ID
+    if let Some(id) = &snap.id {
+        elem.set_id(id);
+    }
+    
+    // 3. 设置 Class
+    for class in &snap.class_list {
+        elem.add_class(class);
+    }
+    
+    // 4. 设置 Attribute
+    for (name, value) in &snap.attributes {
+        elem.set_attribute(name, value)?;
+    }
+    
+    // 5. 转换子节点
+    for child_snap in &snap.children {
+        let child = snap_to_servo_element(child_snap, doc)?;
+        elem.append_child(child);
+    }
+    
+    // 6. 设置 Text Content
+    if !snap.text_content.is_empty() {
+        let text_node = doc.create_text_node(&snap.text_content);
+        elem.append_child(text_node);
+    }
+    
+    Ok(elem)
+}
+```
+
+---
+
+### 14.5. Servo Event → jruste 通信
+
+#### 事件流程
+
+```
+用户交互
+   ↓
+Servo 捕获事件
+   ↓
+事件转换层 (ServoEvent → JsEvent)
+   ↓
+事件队列
+   ↓
+jruste 事件循环
+   ↓
+jruste 事件处理函数
+   ↓
+DOM 更新
+   ↓
+更新反馈给 Servo
+```
+
+#### 事件类型映射
+
+| Servo Event | jrust Event |
+|-------------|------------|
+| `ClickEvent` | `EventType::Click` |
+| `InputEvent` | `EventType::Input` |
+| `KeyEvent` | `EventType::KeyDown/KeyUp` |
+| `MouseMoveEvent` | `EventType::MouseMove` |
+
+#### 通信机制
+
+```rust
+// 事件通道
+struct EventChannel {
+    // Servo → jruste
+    servo_to_jruste: Sender<ServoEvent>,
+    
+    // jruste → Servo
+    jruste_to_servo: Sender<DomUpdate>,
+}
+
+// Servo 端：捕获事件并发送
+fn servo_event_handler(event: ServoEvent, channel: &EventChannel) {
+    channel.servo_to_jruste.send(event).unwrap();
+}
+
+// jruste 端：接收事件并处理
+fn jruste_event_loop(channel: &EventChannel) {
+    while let Ok(event) = channel.servo_to_jruste.recv() {
+        // 1. 转换事件
+        let js_event = servo_event_to_js_event(event);
+        
+        // 2. 调用事件处理函数
+        let update = handle_event(js_event);
+        
+        // 3. 发送 DOM 更新到 Servo
+        channel.jruste_to_servo.send(update).unwrap();
+    }
+}
+```
+
+---
+
+### 14.6. jruste → Servo DOM 更新
+
+#### 更新流程
+
+```
+jruste 修改 DOM
+   ↓
+生成更新指令 (DomUpdate)
+   ↓
+发送到 Servo 集成层
+   ↓
+应用到 Servo DOM
+   ↓
+Servo 重新渲染
+```
+
+#### 更新指令类型
+
+```rust
+enum DomUpdate {
+    // 创建元素
+    CreateElement {
+        parent_id: ElementId,
+        tag_name: String,
+        new_id: ElementId,
+    },
+    
+    // 删除元素
+    RemoveElement {
+        element_id: ElementId,
+    },
+    
+    // 设置属性
+    SetAttribute {
+        element_id: ElementId,
+        name: String,
+        value: String,
+    },
+    
+    // 设置文本内容
+    SetTextContent {
+        element_id: ElementId,
+        text: String,
+    },
+}
+```
+
+---
+
+### 14.7. 完整的 jruste 架构
+
+```rust
+// jruste 主入口
+struct JRusteApp {
+    // 事件通道
+    event_channel: EventChannel,
+    
+    // 当前 DOM
+    current_dom: Document,
+    
+    // 事件监听器
+    event_listeners: EventListeners,
+}
+
+impl JRusteApp {
+    // 启动
+    fn new(snap_path: &Path) -> Result<Self, Error> {
+        // 1. 加载 Snap
+        let snap = load_snap(snap_path)?;
+        
+        // 2. 初始化当前 DOM
+        let current_dom = snap_to_document(&snap)?;
+        
+        // 3. 创建事件通道
+        let event_channel = EventChannel::new();
+        
+        // 4. 初始化 Servo 并注入 Snap
+        init_servo_with_snap(&snap, &event_channel)?;
+        
+        Ok(Self {
+            event_channel,
+            current_dom,
+            event_listeners: EventListeners::new(),
+        })
+    }
+    
+    // 事件循环
+    fn run(&mut self) {
+        loop {
+            // 1. 接收 Servo 事件
+            let servo_event = self.event_channel.recv();
+            
+            // 2. 转换事件
+            let js_event = convert_event(servo_event);
+            
+            // 3. 查找并调用监听器
+            let updates = self.event_listeners.dispatch(&js_event);
+            
+            // 4. 应用 DOM 更新
+            for update in updates {
+                self.apply_update(&update);
+                self.event_channel.send_update(update);
+            }
+        }
+    }
+}
+```
+
+---
+
+### 14.8. 目录结构
+
+```
+jrust-servo/
+├── Cargo.toml
+│
+├── src/
+│   ├── lib.rs
+│   │
+│   ├── servo_init.rs        # Servo 初始化
+│   ├── snap_injector.rs     # Snap 注入 Servo
+│   ├── event_channel.rs     # 事件通道
+│   ├── event_converter.rs   # 事件转换 (Servo ↔ Js)
+│   └── dom_updater.rs       # DOM 更新应用
+│
+└── examples/
+    └── simple_jruste.rs     # 完整示例
+```
+
+---
+
+### 14.9. 关键技术挑战
+
+| 挑战 | 解决方案 |
+|------|---------|
+| Servo 嵌入 API | 使用 Servo 的 embedding crate |
+| DOM 树同步 | 使用双向事件通道 |
+| 性能优化 | 批量 DOM 更新 + 虚拟 DOM diff |
+| 跨线程通信 | 使用 `std::sync::mpsc` 或 `crossbeam-channel` |
+
+---
+
+### 14.10. 开发路线图
+
+#### 阶段 1: 基础框架（1-2 周）
+- [ ] Servo 集成基础
+- [ ] 事件通道实现
+- [ ] 简单的 Snap 注入
+
+#### 阶段 2: 完整功能（3-4 周）
+- [ ] 完整的 Snap → Servo DOM 转换
+- [ ] 完整的事件双向通信
+- [ ] DOM 更新机制
+
+#### 阶段 3: 优化和完善（2-3 周）
+- [ ] 性能优化
+- [ ] 完整的浏览器 API 支持
+- [ ] 文档和示例
