@@ -306,6 +306,95 @@ impl Director {
             .map_err(|e| format!("Load snap failed: {}", e))?;
         self.load_snap(&bytes)
     }
+
+    /// 自动分裂：jrust → jrusti(initializer+snap) + jruste(event handler)
+    pub fn auto_split_into_jrusti_jruste(&self, document: &Document, output_dir: &PathBuf) -> Result<(), String> {
+        println!("\n=== Director: 自动分裂开始 ===\n");
+
+        fs::create_dir_all(output_dir)
+            .map_err(|e| format!("Create output dir failed: {}", e))?;
+
+        // === 1. 生成 jrusti (initializer + Snap) ===
+        println!("--- 1. 生成 jrusti（初始化器 + Snap） ---");
+        let snap_path = output_dir.join("app.snap");
+        self.save_snap_to_file(document, &snap_path)?;
+
+        let jrusti_code = format!(r#"
+//! jrusti - Initializer + Snap 加载器
+use jrust_runtime::director::Director;
+use jrust_runtime::dom::document::Document;
+use std::path::PathBuf;
+
+fn main() -> Result<(), String> {{
+    println!("🚀 === jrusti 启动！加载 Snap 中... === 🚀");
+    
+    let director = Director::new();
+    let snap_path = PathBuf::from("app.snap");
+    let document = director.load_snap_from_file(&snap_path)?;
+    
+    println!("✅ Snap 加载成功！DOM 已就绪！");
+    println!("   Document title: {{}}", document.title());
+    
+    println!("\n🚀 === jrusti 初始化完成！准备启动 jruste === 🚀");
+    Ok(())
+}}
+"#);
+        let jrusti_path = output_dir.join("jrusti.rs");
+        fs::write(&jrusti_path, jrusti_code)
+            .map_err(|e| format!("Write jrusti failed: {}", e))?;
+        println!("✅ jrusti 已保存到 {:?}", jrusti_path);
+
+        // === 2. 生成 jruste (event handler) ===
+        println!("\n--- 2. 生成 jruste（事件处理器） ---");
+        let jruste_code = format!(r#"
+//! jruste - Event Handler + DOM 渲染
+use jrust_runtime::director::Director;
+use jrust_runtime::document::Document;
+use jrust_runtime::element::Element;
+use jrust_runtime::events::{{EventType, EventTarget}};
+use std::path::PathBuf;
+
+fn main() -> Result<(), String> {{
+    println!("🚀 === jruste 启动！加载 Snap + 处理事件 === 🚀");
+    
+    // 1. 加载 Snap
+    let director = Director::new();
+    let snap_path = PathBuf::from("app.snap");
+    let mut document = director.load_snap_from_file(&snap_path)?;
+    
+    println!("✅ Snap 加载成功！");
+    
+    // 2. 模拟事件循环
+    println!("\n--- 事件循环开始 ---");
+    println!("   按 Ctrl+C 退出...");
+    
+    // 简单的事件循环（模拟）
+    let mut counter = 0;
+    loop {{
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        counter += 1;
+        
+        if counter % 10 == 0 {{
+            println!("🔄 事件循环中... 已处理 {{}} 帧", counter);
+        }}
+        
+        if counter > 50 {{
+            break;
+        }}
+    }}
+    
+    println!("\n✅ 事件循环结束！");
+    Ok(())
+}}
+"#);
+        let jruste_path = output_dir.join("jruste.rs");
+        fs::write(&jruste_path, jruste_code)
+            .map_err(|e| format!("Write jruste failed: {}", e))?;
+        println!("✅ jruste 已保存到 {:?}", jruste_path);
+
+        println!("\n=== Director: 自动分裂完成！ ===");
+        Ok(())
+    }
 }
 
 /// JRustApp - 自动 Snap 的应用包装器
