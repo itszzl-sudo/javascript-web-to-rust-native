@@ -108,26 +108,125 @@ impl Director {
         Ok(js_content)
     }
     
-    /// 翻译 JS 代码为 JRust (库调用方式，不启动子进程)
+    /// 翻译 JS 代码为 JRust (通过 CLI 调用方式)
     pub fn translate_to_jrust(&self, js_code: &str) -> Result<String, String> {
         println!("=== Director: 翻译 JS 为 JRust ===\n");
         
-        // 注意：这里我们需要依赖 jrust-translator 库
-        // 但为了避免循环依赖，我们暂时返回一个模拟的结果
-        // 在实际使用中，Director 应该在单独的 crate 中
-        
         println!("输入 JS 代码长度: {} 字节", js_code.len());
         
-        // 模拟翻译过程
-        let rust_code = format!(
-            "// 由 Director 翻译的 JRust 代码\n\
-            fn main() {{\n\
-            \tprintln!(\"Hello from translated JRust!\");\n\
-            }}\n"
-        );
+        // 1. 将 JS 代码写入临时文件
+        let temp_js_path = self.workdir.join("temp_input.js");
+        fs::write(&temp_js_path, js_code)
+            .map_err(|e| format!("写入临时 JS 文件失败: {}", e))?;
         
-        println!("✅ 翻译完成\n");
+        println!("临时 JS 文件已创建: {:?}", temp_js_path);
+        
+        // 2. 检查是否有 jrust-translator 二进制
+        let translator_path = self.workdir.join("../../target/release/jrust-translator.exe");
+        if !translator_path.exists() {
+            println!("未找到 jrust-translator 二进制，使用模拟翻译");
+            // 模拟翻译过程
+            let rust_code = format!(
+                "// 由 Director 翻译的 JRust 代码\n\
+                fn main() {{\n\
+                \tprintln!(\"Hello from translated JRust!\");\n\
+                }}\n"
+            );
+            // 清理临时文件
+            let _ = fs::remove_file(temp_js_path);
+            println!("✅ 模拟翻译完成\n");
+            return Ok(rust_code);
+        }
+        
+        // 3. 调用 jrust-translator CLI
+        println!("正在调用 jrust-translator...");
+        let output = Command::new(&translator_path)
+            .arg(&temp_js_path)
+            .output()
+            .map_err(|e| format!("调用 jrust-translator 失败: {}", e))?;
+        
+        if !output.status.success() {
+            return Err(format!(
+                "jrust-translator 失败: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+        
+        let rust_code = String::from_utf8_lossy(&output.stdout).to_string();
+        
+        // 4. 清理临时文件
+        let _ = fs::remove_file(temp_js_path);
+        
+        println!("✅ 真实翻译完成\n");
         Ok(rust_code)
+    }
+    
+    /// 编译 JRust 代码为二进制
+    pub fn compile_jrust(&self, rust_code: &str, output_name: &str) -> Result<PathBuf, String> {
+        println!("=== Director: 编译 JRust 为二进制 ===\n");
+        
+        // 1. 创建临时项目目录
+        let temp_project_dir = self.workdir.join("temp_jrust_project");
+        let _ = fs::remove_dir_all(&temp_project_dir); // 清理旧的
+        fs::create_dir_all(&temp_project_dir)
+            .map_err(|e| format!("创建临时项目目录失败: {}", e))?;
+        
+        // 2. 创建 Cargo.toml
+        let cargo_toml = format!(
+            "[package]\n\
+            name = \"{}\"\n\
+            version = \"0.1.0\"\n\
+            edition = \"2021\"\n\
+            \n\
+            [workspace]\n\
+            \n\
+            [dependencies]\n\
+            jrust-runtime = {{ path = \"../../jrust-runtime\" }}\n",
+            output_name
+        );
+        fs::write(temp_project_dir.join("Cargo.toml"), cargo_toml)
+            .map_err(|e| format!("写入 Cargo.toml 失败: {}", e))?;
+        
+        // 3. 创建 src/main.rs
+        let src_dir = temp_project_dir.join("src");
+        fs::create_dir_all(&src_dir)
+            .map_err(|e| format!("创建 src 目录失败: {}", e))?;
+        fs::write(src_dir.join("main.rs"), rust_code)
+            .map_err(|e| format!("写入 main.rs 失败: {}", e))?;
+        
+        println!("临时项目已创建: {:?}", temp_project_dir);
+        
+        // 4. 运行 cargo build
+        println!("正在运行 cargo build...");
+        let build_output = Command::new("cargo")
+            .arg("build")
+            .arg("--release")
+            .current_dir(&temp_project_dir)
+            .output()
+            .map_err(|e| format!("cargo build 失败: {}", e))?;
+        
+        if !build_output.status.success() {
+            return Err(format!(
+                "cargo build 失败:\n{}",
+                String::from_utf8_lossy(&build_output.stderr)
+            ));
+        }
+        
+        // 5. 查找生成的二进制
+        let exe_name = if cfg!(windows) {
+            format!("{}.exe", output_name)
+        } else {
+            output_name.to_string()
+        };
+        
+        let target_exe = temp_project_dir.join("target/release").join(exe_name);
+        
+        if target_exe.exists() {
+            println!("✅ 编译完成，二进制文件: {:?}", target_exe);
+            Ok(target_exe)
+        } else {
+            Err("未找到生成的二进制文件".to_string())
+        }
     }
 }
 
