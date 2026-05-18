@@ -71,11 +71,16 @@ impl Framework {
             ],
             Framework::React => &[
                 "React.createElement",
+                "createElement",
                 "useState",
                 "useEffect",
                 "useRef",
                 "useMemo",
                 "useCallback",
+                "useContext",
+                "useReducer",
+                "_jsx",
+                "_jsxs",
             ],
             Framework::Angular => &[
                 "ɵɵelementStart",

@@ -15,6 +15,7 @@
 ## 框架支持
 
 - [框架支持方案](./FRAMEWORK_SUPPORT.md) - Vue/React/Svelte/Angular 支持
+- [框架实现记录](./FRAMEWORK_IMPLEMENTATION.md) - 已完成框架实现详情
 - [Vue 预编译方案](./VUE_PRECOMPILE.md) - Vue 3 模板预编译
 - [Svelte 运行时](./SVELTE_RUNTIME.md) - Svelte 绑定实现
 - [React 运行时](./REACT_RUNTIME.md) - React 支持方案

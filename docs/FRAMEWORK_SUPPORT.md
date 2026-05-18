@@ -18,7 +18,7 @@
 | **Svelte** | ✅ 原生支持 | Svelte 编译器 | 几乎无 | ✅ 已实现 |
 | **Preact** | ✅ 支持 | SWC JSX 转换 | 极小 | ✅ 已实现 |
 | **SolidJS** | ✅ 支持 | Solid 编译器 | 极小 | ✅ 已实现 |
-| **React** | ⚠️ 部分支持 | SWC JSX 转换 | React 运行时 | 🚧 规划中 |
+| **React** | ✅ 支持 | SWC JSX 转换 | Hooks 实现 | ✅ 已实现 |
 | **Angular** | ⚠️ 复杂 | AOT 编译 | Angular 运行时 | 🚧 规划中 |
 
 ---
