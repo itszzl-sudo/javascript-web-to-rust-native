@@ -99,9 +99,29 @@ impl BrowserInstance {
         Ok(())
     }
 
+    /// Clear all custom CSS
+    pub fn clear_css(&mut self) {
+        self.bridge.clear_css();
+    }
+
     /// Query element by selector
     pub fn query(&self, selector: &str) -> Option<usize> {
         self.bridge.query(selector)
+    }
+
+    /// Query all elements matching selector
+    pub fn query_all(&self, selector: &str) -> Vec<usize> {
+        self.bridge.query_all(selector)
+    }
+
+    /// Get element tag name
+    pub fn tag_name(&self, node_id: usize) -> Option<String> {
+        self.bridge.tag_name(node_id)
+    }
+
+    /// Get parent node ID
+    pub fn parent_node(&self, node_id: usize) -> Option<usize> {
+        self.bridge.parent_node(node_id)
     }
 
     /// Set attribute on element
@@ -154,6 +174,25 @@ impl BrowserInstance {
         F: FnMut(f32, f32) + Send + 'static,
     {
         self.bridge.on_click(selector, Box::new(handler));
+    }
+
+    /// Bind form submit handler
+    pub fn on_form_submit<F>(&mut self, selector: &str, handler: F)
+    where
+        F: FnMut(std::collections::HashMap<String, String>) + Send + 'static,
+    {
+        self.bridge.on_form_submit(selector, Box::new(handler));
+    }
+
+    /// Handle form submit event
+    pub fn handle_form_submit(&mut self, form_selector: &str) {
+        self.bridge.handle_form_submit(form_selector);
+    }
+
+    /// Hit test at position
+    pub fn hit_test(&self, x: f32, y: f32) -> Option<(usize, String, f32, f32, f32, f32)> {
+        self.bridge.hit_test(x, y)
+            .map(|n| (n.dom_node, n.tag_name, n.x, n.y, n.width, n.height))
     }
 
     /// Get viewport size
