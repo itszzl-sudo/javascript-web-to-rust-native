@@ -24,8 +24,9 @@
 
 - [技术评估报告](./TECH_EVALUATION.md) - DOM预编译与序列化方案
 - [构建脚本指南](./build-scripts-guide.md) - 一键构建流程
-- [代码分离器](./code-splitter-guide.md) - jrusti/jruste 分离机制
+- [代码分离器](./code-splitter-guide.md) - 初始化/事件代码分离机制
 - [Cranelift 编译器](./cranelift-native-compiler-zh-CN.md) - 原生编译技术
+- [移动端支持](./MOBILE_SUPPORT.md) - iOS/Android 支持
 
 ## 英文文档
 
@@ -43,8 +44,10 @@ docs/
 ├── STATUS.md            # 项目状态
 ├── ROADMAP.md           # 路线图
 ├── KNOWN_ISSUES.md      # 已知问题
+├── FRAMEWORK_*.md       # 框架支持文档
 ├── VUE_PRECOMPILE.md    # Vue 预编译
 ├── TECH_EVALUATION.md   # 技术评估
+├── MOBILE_SUPPORT.md    # 移动端支持
 ├── build-scripts-*.md   # 构建脚本相关
 ├── code-splitter-*.md   # 代码分离器相关
 └── cranelift-*.md       # Cranelift 编译器
@@ -59,3 +62,4 @@ docs/
 | ARCHITECTURE.md | 2026-05-18 |
 | ROADMAP.md | 2026-05-18 |
 | DEVELOPMENT.md | 2026-05-18 |
+| MOBILE_SUPPORT.md | 2026-05-18 |

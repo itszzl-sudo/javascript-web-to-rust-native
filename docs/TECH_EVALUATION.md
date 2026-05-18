@@ -64,7 +64,7 @@
 
 **关键问题**：
 - React的JSX转换后仍需要React运行时（React.createElement）
-- 需要评估Servo中SpiderMonkey是否能承担此任务
+- 需要评估rust-browser是否能承担此任务
 - 需要识别"初始化代码"与"事件监听代码"的边界
 
 **结论**：swc具备JSX转换能力，但具体执行需要SpiderMonkey支持。
@@ -78,7 +78,7 @@
 **关键问题**：
 - Angular运行时依赖较重
 - Ivy渲染引擎的复杂性
-- 需评估与Servo的兼容性
+- 需评估与rust-browser的兼容性
 
 **结论**：Angular AOT编译可行，但需要评估运行时依赖。
 
@@ -93,7 +93,7 @@
 
 ---
 
-## 3. Servo/SpiderMonkey能力评估
+## 3. rust-browser 能力评估
 
 ### 3.1 SpiderMonkey技术能力
 
@@ -103,7 +103,7 @@ SpiderMonkey是Mozilla的JavaScript引擎（Firefox的JS引擎），具备以下
 |------|---------|------|
 | JavaScript解析 | ✅ 完整支持 | ES2020+ |
 | JIT编译 | ✅ IonMonkey | 高性能 |
-| DOM API | ✅ 通过Servo绑定 | 完整的DOM操作 |
+| DOM API | ✅ 通过rust-browser绑定 | 完整的DOM操作 |
 | 垃圾回收 | ✅ GC | 内存管理 |
 | WebAssembly | ✅ 支持 | 可选 |
 
@@ -125,7 +125,7 @@ pub fn spider_monkey_pre_execute(js_code: &str) -> Result<DomSnapshot> {
 **优点**：
 - ✅ SpiderMonkey是成熟的JavaScript引擎，稳定可靠
 - ✅ 可以正确执行所有JavaScript代码（包括React.createElement等）
-- ✅ Servo已经集成了SpiderMonkey，可以复用
+- ✅ rust-browser已集成，可以复用
 - ✅ 生态成熟，过程可观测（DevTools协议支持）
 
 **缺点**：
@@ -533,7 +533,7 @@ pub fn deserialize_and_rebind(
 | **P0** | 设计事件序列化机制 | 方案B | EventDescriptor、EventHandlerRegistry | DOM API |
 | **P0** | 集成rkyv序列化 | 方案B | 序列化框架集成、性能测试 | 事件序列化 |
 | **P1** | 实现代码分离器 | 方案A+B | 静态分析、AST分析 | - |
-| **P1** | SpiderMonkey预执行集成 | 方案A | Servo集成、DOM快照 | 代码分离器 |
+| **P1** | SpiderMonkey预执行集成 | 方案A | rust-browser集成、DOM快照 | 代码分离器 |
 | **P1** | Vue 3完整支持 | 方案B | 模板预编译、DOM序列化 | rkyv集成 |
 | **P2** | React支持 | 方案A+B | swc JSX转换、SpiderMonkey执行 | SpiderMonkey |
 | **P2** | Angular支持 | 方案A+B | AOT编译、运行时适配 | SpiderMonkey |
@@ -544,7 +544,7 @@ pub fn deserialize_and_rebind(
 
 | 风险 | 概率 | 影响 | 缓解措施 |
 |------|------|------|----------|
-| SpiderMonkey集成复杂度 | 中 | 中 | 使用Servo已有的集成方案 |
+| SpiderMonkey集成复杂度 | 中 | 中 | 使用rust-browser已有的集成方案 |
 | 事件监听器序列化不完整 | 高 | 中 | 设计描述符机制，分阶段实现 |
 | 性能达不到预期 | 中 | 高 | 持续benchmark，rkyv优化 |
 | 框架兼容性问题 | 中 | 高 | 渐进式支持，优先Vue/React |

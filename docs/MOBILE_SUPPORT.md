@@ -24,9 +24,9 @@ Rust 代码 + jrust-runtime
 │ Desktop  │   iOS    │   Android     │
 │ (现有)   │  (新增)  │   (新增)      │
 ├──────────┼──────────┼───────────────┤
-│ Servo/   │ UIKit/   │ Kotlin/       │
-│ rust-    │ SwiftUI  │ Jetpack       │
-│ browser  │          │ Compose       │
+│ rust-   │ UIKit/   │ Kotlin/       │
+│ browser │ SwiftUI  │ Jetpack       │
+│ (现有)  │          │ Compose       │
 └──────────┴──────────┴───────────────┘
 ```
 

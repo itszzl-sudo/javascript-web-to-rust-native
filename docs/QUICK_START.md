@@ -49,7 +49,8 @@ cargo test
 
 # 运行特定 crate 测试
 cargo test -p jrust-translator  # 65+ 测试
-cargo test -p jrust-runtime     # 36 测试
+cargo test -p jrust-runtime     # 54 测试
+cargo test -p jrust-browser     # 3 测试
 ```
 
 ## 核心组件
@@ -58,6 +59,7 @@ cargo test -p jrust-runtime     # 36 测试
 |-------|------|---------|
 | jrust-translator | JS → Rust 转译器 | `cargo test -p jrust-translator` |
 | jrust-runtime | 运行时环境 | `cargo run --example basic_usage -p jrust-runtime` |
+| jrust-browser | rust-browser 集成 | `cargo run --example network_test -p jrust-browser` |
 | cranelift-compiler | 原生编译器 | `cargo build -p cranelift-compiler` |
 | director | CLI 编排工具 | `cargo run -p director` |
 
@@ -69,7 +71,6 @@ src/
 ├── jrust-runtime/        # 运行时环境 (DOM/BOM/GC)
 ├── cranelift-compiler/   # Cranelift 原生编译器
 ├── binding-generator/    # 过程宏绑定生成器
-├── jrust-servo/          # Servo 浏览器集成
 ├── jrust-browser/        # rust-browser 集成
 ├── director/             # CLI 编排工具
 └── vue-demo/             # Vue 应用演示
