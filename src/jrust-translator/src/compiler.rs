@@ -2,12 +2,14 @@ use crate::analyzer::{Analyzer, AnalysisResult};
 use crate::ast::Program;
 use crate::codegen::CodeGen;
 use crate::error::Result;
+use crate::ir_gen::IrGenerator;
 use crate::swc_parser::SwcParser;
 
 pub struct Compiler {
     parser: SwcParser,
     analyzer: Analyzer,
     codegen: CodeGen,
+    ir_gen: IrGenerator,
 }
 
 impl Compiler {
@@ -16,6 +18,7 @@ impl Compiler {
             parser: SwcParser::new(),
             analyzer: Analyzer::new(),
             codegen: CodeGen::new(),
+            ir_gen: IrGenerator::new(),
         }
     }
 
@@ -41,6 +44,23 @@ impl Compiler {
             analysis,
             code,
         })
+    }
+    
+    pub fn compile_to_ir(&mut self, source: &str) -> Result<cranelift_compiler::Program> {
+        let module = self.parser.parse(source).map_err(|e: crate::swc_parser::SwcParseError| crate::error::Error::ParseError {
+            location: "line 1".to_string(),
+            message: e.to_string(),
+        })?;
+        
+        let body = crate::swc_parser::swc_module_to_ast(module);
+        
+        let program = Program {
+            source_type: crate::ast::SourceType::Module,
+            body,
+            loc: crate::ast::SourceLocation::default(),
+        };
+        
+        self.ir_gen.generate(&program)
     }
 }
 

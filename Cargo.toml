@@ -4,9 +4,11 @@ members = [
     "src/jrust-translator",
     "src/jrust-runtime",
     "src/jrust-servo",
+    "src/jrust-browser",
     "src/director",
     "src/vue-demo",
     "src/binding-generator",
+    "src/cranelift-compiler",
 ]
 
 [workspace.package]
@@ -30,3 +32,5 @@ tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 indexmap = "2.5"
 hashbrown = "0.15"
 rkyv = { version = "0.7", features = ["std"] }
+
+rust-browser = { path = "../../rust-browser/rust-browser" }

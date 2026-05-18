@@ -1,5 +1,5 @@
 
-//! jrust-servo: jrust 与 Servo 的集成桥接层
+//! jrust-servo: jrust and Servo integration bridge
 
 pub mod error;
 pub mod event_channel;
@@ -10,5 +10,5 @@ pub mod snap_injector;
 pub use error::{Error, Result};
 pub use event_channel::{EventChannel, ServoEvent};
 pub use dom_update::DomUpdate;
-pub use servo_init::ServoConfig;
+pub use servo_init::{ServoConfig, ServoInstance};
 pub use snap_injector::SnapInjector;

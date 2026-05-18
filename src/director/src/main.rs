@@ -1,167 +1,133 @@
-
-use jrust_runtime::director::*;
-use std::path::PathBuf;
+use std::env;
 use std::fs;
+use std::path::PathBuf;
 
 fn main() {
-    println!("=== Director 完整工作流程演示 - 生成最终产品！ ===\n");
-
-    // === 步骤 1: 初始化 Director ===
-    let project_dir = PathBuf::from("src/vue-compile-demo");
-    let director = Director::with_workdir(project_dir.clone());
-
-    // === 步骤 2: 读取已构建的 JS ===
-    println!("=== 1. 读取已构建的 JS 文件 ===\n");
-
-    let dist_path = project_dir.join("dist").join("assets");
-    let mut js_content = String::new();
-
-    if let Ok(entries) = fs::read_dir(&dist_path) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if let Some(ext) = path.extension() {
-                if ext == "js" {
-                    println!("找到 JS 文件: {:?}", path);
-                    js_content = fs::read_to_string(&path)
-                        .map_err(|e| format!("Failed to read JS file: {}", e))
-                        .unwrap_or_default();
-                    break;
-                }
-            }
-        }
-    }
-
-    if js_content.is_empty() {
-        eprintln!("错误: 没有找到 JS 文件");
+    let args: Vec<String> = env::args().collect();
+    
+    if args.len() < 2 {
+        print_usage();
         return;
     }
-
-    println!("JS 文件大小: {} 字节\n", js_content.len());
-
-    // === 步骤 3: 翻译为 JRust ===
-    println!("=== 2. 翻译 JS 为 JRust ===\n");
-
-    let rust_code = match director.translate_to_jrust(&js_content) {
-        Ok(code) => code,
-        Err(e) => {
-            eprintln!("翻译失败: {}", e);
-            return;
-        }
-    };
-
-    println!("生成的 JRust 代码:\n{}", rust_code);
-
-    // === 步骤 4: 编译为二进制 ===
-    println!("\n=== 3. 编译 JRust 为二进制 ===\n");
-
-    // 创建一个完整、可运行的应用，使用 jrust-runtime
-    let app_rust_code = r#"
-//! JRust 最终产品应用！
-use jrust_runtime::document::Document;
-use jrust_runtime::element::Element;
-use jrust_runtime::events::{EventType, EventTarget};
-use jrust_runtime::core::{JsValue, JsObject};
-use std::rc::Rc;
-use std::cell::RefCell;
-
-fn main() {
-    println!("🚀 === JRust 最终产品应用启动！ === 🚀");
     
-    // 初始化 DOM
-    let mut document = Document::new();
-    println!("✅ DOM 系统初始化完成");
+    let mut input_file: Option<String> = None;
+    let mut output_name = "app".to_string();
+    let mut output_dir = "dist".to_string();
     
-    // 创建应用界面
-    let mut app = Element::new("div");
-    app.set_id("app");
-    app.set_attribute("class", "container");
-    
-    // 标题
-    let mut h1 = Element::new("h1");
-    h1.set_text_content("🎨 JRust - JavaScript 到 Rust 应用");
-    app.append_child(h1);
-    
-    // 描述
-    let mut p = Element::new("p");
-    p.set_text_content("这是一个由 Director 完整工作流程生成的原生应用！");
-    app.append_child(p);
-    
-    // 按钮
-    let mut button = Element::new("button");
-    button.set_text_content("点击我！");
-    button.set_attribute("class", "btn-primary");
-    
-    let click_count = Rc::new(RefCell::new(0));
-    
-    // 添加事件监听
-    let count_ref = Rc::clone(&click_count);
-    button.add_event_listener(EventType::Click, Box::new(move |_event| {
-        let mut count = count_ref.borrow_mut();
-        *count += 1;
-        println!("🔘 按钮被点击！次数: {}", count);
-        JsValue::new_undefined()
-    }));
-    
-    app.append_child(button);
-    
-    // 挂载
-    document.append_to_body(app);
-    
-    println!("\n✅ 应用界面构建完成");
-    
-    // 模拟交互
-    println!("\n--- 模拟用户交互 ---");
-    
-    // 模拟 5 次点击
-    for i in 1..=5 {
-        println!(" 模拟点击 #{i}...");
-        *click_count.borrow_mut() = i;
-        println!("  当前计数: {}", click_count.borrow());
-    }
-    
-    println!("\n✅ 应用运行完成！");
-    println!("感谢使用 JRust！🎊");
-}
-"#;
-
-    match director.compile_jrust(app_rust_code, "final_jrust_app") {
-        Ok(exe_path) => {
-            println!("\n✅ 编译成功！");
-            println!("生成的可执行文件: {:?}", exe_path);
-
-            // 步骤 5: 打包最终产品！
-            println!("\n=== 4. 打包最终产品 ===\n");
-            
-            let output_dir = project_dir.join("../../dist").join("final_product");
-            match director.pack_final_product(&exe_path, &output_dir) {
-                Ok(packed_exe) => {
-                    println!("\n✅ 产品打包成功！");
-                    println!("最终产品目录: {:?}", output_dir);
-                    println!("可执行文件: {:?}", packed_exe);
-
-                    // 运行最终产品！
-                    println!("\n--- 运行最终产品 ---");
-                    if let Ok(output) = std::process::Command::new(&packed_exe).output() {
-                        println!("产品输出:");
-                        println!("{}", String::from_utf8_lossy(&output.stdout));
-                    }
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--input" | "-i" => {
+                i += 1;
+                if i < args.len() {
+                    input_file = Some(args[i].clone());
                 }
-                Err(e) => {
-                    eprintln!("\n❌ 打包失败: {}", e);
+            }
+            "--name" | "-n" => {
+                i += 1;
+                if i < args.len() {
+                    output_name = args[i].clone();
+                }
+            }
+            "--output" | "-o" => {
+                i += 1;
+                if i < args.len() {
+                    output_dir = args[i].clone();
+                }
+            }
+            "--help" | "-h" => {
+                print_usage();
+                return;
+            }
+            _ => {
+                if input_file.is_none() {
+                    input_file = Some(args[i].clone());
                 }
             }
         }
+        i += 1;
+    }
+    
+    let input_file = match input_file {
+        Some(f) => f,
+        None => {
+            eprintln!("❌ 错误: 未指定输入文件");
+            eprintln!("使用 --input <file> 指定");
+            std::process::exit(1);
+        }
+    };
+    
+    println!("=========================================");
+    println!("  Director CLI - JS → Native");
+    println!("=========================================");
+    println!("输入文件: {}", input_file);
+    println!("输出名称: {}", output_name);
+    println!("输出目录: {}", output_dir);
+    println!();
+    
+    let js_content = match fs::read_to_string(&input_file) {
+        Ok(content) => content,
         Err(e) => {
-            eprintln!("\n❌ 编译失败: {}", e);
+            eprintln!("❌ 读取文件失败: {}", e);
+            std::process::exit(1);
+        }
+    };
+    
+    println!("JS 代码大小: {} 字节", js_content.len());
+    println!();
+    
+    let director = jrust_runtime::director::Director::new();
+    
+    match director.compile_to_native(&js_content, &output_name) {
+        Ok(obj_path) => {
+            println!();
+            println!("✅ 编译成功！");
+            println!("目标文件: {:?}", obj_path);
+            
+            let output_path = PathBuf::from(&output_dir).join(&output_name);
+            if let Err(e) = fs::create_dir_all(&output_path) {
+                eprintln!("⚠️  创建输出目录失败: {}", e);
+            }
+            
+            let final_obj = output_path.join(format!("{}.obj", output_name));
+            if let Err(e) = fs::copy(&obj_path, &final_obj) {
+                eprintln!("⚠️  复制目标文件失败: {}", e);
+            } else {
+                println!("输出位置: {:?}", final_obj);
+            }
+            
+            println!();
+            println!("下一步:");
+            println!("  compiler.link_with_lib(&obj, \"rust-browser.lib\", \"{}.exe\")", output_name);
+        }
+        Err(e) => {
+            eprintln!();
+            eprintln!("❌ 编译失败: {}", e);
+            std::process::exit(1);
         }
     }
-
-    println!("\n🎉 === 工作流程演示完成！ === 🎉");
-    println!("完整流程:");
-    println!("  1. 读取真实 Vue 项目");
-    println!("  2. 翻译为 JRust");
-    println!("  3. 编译为原生 EXE");
-    println!("  4. 打包最终产品（带 README）");
-    println!("\n✅ 完整的 end-to-end 工作流程演示成功！");
 }
 
+fn print_usage() {
+    println!("Director CLI - Vue 项目 → Native 可执行文件编译器");
+    println!();
+    println!("用法:");
+    println!("  director --input <js-file> [options]");
+    println!("  director <js-file> [options]");
+    println!();
+    println!("选项:");
+    println!("  -i, --input <file>   输入 JS 文件路径");
+    println!("  -n, --name <name>    输出名称 (默认: app)");
+    println!("  -o, --output <dir>   输出目录 (默认: dist)");
+    println!("  -h, --help           显示帮助信息");
+    println!();
+    println!("示例:");
+    println!("  director --input ./dist/assets/index.js --name my-app");
+    println!("  director ./app.js -n my-app -o ./output");
+    println!();
+    println!("流程:");
+    println!("  1. 读取 JS 文件 (已优化的 Vue 项目输出)");
+    println!("  2. JS → Cranelift IR (jrust-translator)");
+    println!("  3. IR → 目标文件 (cranelift-compiler)");
+    println!("  4. 输出 .obj 文件 (待链接 rust-browser.lib)");
+}

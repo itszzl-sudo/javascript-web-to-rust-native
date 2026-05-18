@@ -11,6 +11,10 @@
 *.swo
 *~
 
+# CodeArts
+.arts/
+.codeartsdoer/
+
 # Logs
 *.log
 .DS_Store
@@ -33,5 +37,8 @@ test.js
 temp_jrust_project/
 temp_input.js
 
-# Final product
-dist/
+# Prebuilt binaries
+prebuilt/
+
+# Demo apps
+cool-vue-app/

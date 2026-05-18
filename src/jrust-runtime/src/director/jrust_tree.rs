@@ -1,8 +1,6 @@
-
 use std::collections::HashMap;
 use std::fmt;
 
-/// JsRust 实例唯一标识符
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct JsRustId(pub u64);
 
@@ -12,7 +10,6 @@ impl fmt::Display for JsRustId {
     }
 }
 
-/// JsRust 实例 Trait
 pub trait JsRustInstance: Send + 'static {
     fn init(&mut self);
     fn handle_event(&mut self) -> bool;
@@ -20,14 +17,12 @@ pub trait JsRustInstance: Send + 'static {
     fn get_children(&self) -> Vec<JsRustId>;
 }
 
-/// JsRust 树节点
 pub struct JsRustNode {
     pub id: JsRustId,
     pub instance: Box<dyn JsRustInstance>,
     pub children: Vec<JsRustId>,
 }
 
-/// JsRust 树
 pub struct JsRustTree {
     nodes: HashMap<JsRustId, JsRustNode>,
     root: Option<JsRustId>,
@@ -89,6 +84,18 @@ impl JsRustTree {
         self.nodes.get_mut(&id)
     }
     
+    pub fn get_root(&self) -> Option<JsRustId> {
+        self.root
+    }
+    
+    pub fn list_all_ids(&self) -> Vec<JsRustId> {
+        self.nodes.keys().cloned().collect()
+    }
+    
+    pub fn node_count(&self) -> usize {
+        self.nodes.len()
+    }
+    
     pub fn dispatch_event(&mut self) -> bool {
         if let Some(root_id) = self.root {
             self.dispatch_event_recursive(root_id)
@@ -128,6 +135,37 @@ impl JsRustTree {
         
         stop_propagation
     }
+    
+    pub fn remove_node(&mut self, id: JsRustId) -> bool {
+        if !self.nodes.contains_key(&id) {
+            return false;
+        }
+        
+        let children: Vec<JsRustId> = {
+            if let Some(node) = self.nodes.get(&id) {
+                node.children.clone()
+            } else {
+                Vec::new()
+            }
+        };
+        
+        for child_id in children {
+            self.remove_node(child_id);
+        }
+        
+        if self.root == Some(id) {
+            self.root = None;
+        }
+        
+        self.nodes.remove(&id);
+        true
+    }
+    
+    pub fn clear(&mut self) {
+        self.nodes.clear();
+        self.root = None;
+        self.next_id = 1;
+    }
 }
 
 impl Default for JsRustTree {
@@ -135,4 +173,3 @@ impl Default for JsRustTree {
         Self::new()
     }
 }
-
