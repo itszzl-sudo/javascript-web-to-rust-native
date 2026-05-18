@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "src/jrust-translator",
     "src/jrust-runtime",
-    "src/jrust-servo",
     "src/jrust-browser",
     "src/director",
     "src/vue-demo",
