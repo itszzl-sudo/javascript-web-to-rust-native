@@ -236,6 +236,23 @@ impl BrowserInstance {
             final_url: r.final_url,
         })
     }
+
+    // ── 文件操作 ──
+
+    /// Download file from URL and save to local path
+    pub fn download_file(&mut self, url: &str, path: &str) -> Result<u64, String> {
+        self.bridge.download_file(url, path)
+    }
+
+    /// Write data to file
+    pub fn write_file(&mut self, path: &str, data: &[u8]) -> Result<(), String> {
+        self.bridge.write_file(path, data)
+    }
+
+    /// Read file content
+    pub fn read_file(&mut self, path: &str) -> Result<Vec<u8>, String> {
+        self.bridge.read_file(path)
+    }
 }
 
 /// Browser events for jrust-browser event handling
