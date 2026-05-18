@@ -12,9 +12,15 @@
 - [路线图](./ROADMAP.md) - 开发计划、里程碑
 - [已知问题](./KNOWN_ISSUES.md) - 限制和解决方案
 
+## 框架支持
+
+- [框架支持方案](./FRAMEWORK_SUPPORT.md) - Vue/React/Svelte/Angular 支持
+- [Vue 预编译方案](./VUE_PRECOMPILE.md) - Vue 3 模板预编译
+- [Svelte 运行时](./SVELTE_RUNTIME.md) - Svelte 绑定实现
+- [React 运行时](./REACT_RUNTIME.md) - React 支持方案
+
 ## 技术细节
 
-- [Vue 预编译方案](./VUE_PRECOMPILE.md) - Vue 3 模板预编译
 - [技术评估报告](./TECH_EVALUATION.md) - DOM预编译与序列化方案
 - [构建脚本指南](./build-scripts-guide.md) - 一键构建流程
 - [代码分离器](./code-splitter-guide.md) - jrusti/jruste 分离机制
