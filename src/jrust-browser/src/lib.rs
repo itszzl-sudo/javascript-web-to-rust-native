@@ -7,4 +7,4 @@ pub mod error;
 pub mod bridge;
 
 pub use error::{Error, Result};
-pub use bridge::{BrowserConfig, BrowserInstance, JrustBrowserEvent};
+pub use bridge::{BrowserConfig, BrowserInstance, JrustBrowserEvent, HttpResponse};

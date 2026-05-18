@@ -204,6 +204,38 @@ impl BrowserInstance {
     pub fn set_viewport(&mut self, width: u32, height: u32) {
         self.bridge.set_viewport(width, height);
     }
+
+    // ── 网络请求 ──
+
+    /// Navigate to URL
+    pub fn navigate(&mut self, url: &str) -> Result<(), String> {
+        self.bridge.navigate(url)
+    }
+
+    /// Get current URL
+    pub fn current_url(&self) -> String {
+        self.bridge.current_url()
+    }
+
+    /// HTTP GET request
+    pub fn http_get(&mut self, url: &str) -> Result<HttpResponse, String> {
+        self.bridge.http_get(url).map(|r| HttpResponse {
+            status: r.status,
+            headers: r.headers,
+            body: r.body,
+            final_url: r.final_url,
+        })
+    }
+
+    /// HTTP POST request
+    pub fn http_post(&mut self, url: &str, body: &[u8], content_type: &str) -> Result<HttpResponse, String> {
+        self.bridge.http_post(url, body, content_type).map(|r| HttpResponse {
+            status: r.status,
+            headers: r.headers,
+            body: r.body,
+            final_url: r.final_url,
+        })
+    }
 }
 
 /// Browser events for jrust-browser event handling
@@ -225,4 +257,13 @@ pub enum JrustBrowserEvent {
         code: String,
         result: Option<String>,
     },
+}
+
+/// HTTP Response wrapper
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HttpResponse {
+    pub status: u16,
+    pub headers: std::collections::HashMap<String, String>,
+    pub body: Vec<u8>,
+    pub final_url: String,
 }
