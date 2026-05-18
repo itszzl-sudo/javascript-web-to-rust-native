@@ -3,7 +3,9 @@
 //! 实现 Preact 的 h() 函数和组件 API
 
 use crate::bindings::BindingRegistry;
-use crate::core::{JsValue, JsObject};
+use crate::core::{JsValue, JsObject, JsArray};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub fn register_preact_bindings(registry: &mut BindingRegistry) {
     registry.register("preact_h", preact_h);
@@ -20,8 +22,8 @@ fn preact_h(args: &[JsValue]) -> Result<JsValue, String> {
     }
     
     let type_ = &args[0];
-    let props = args.get(1).cloned().unwrap_or(JsValue::Object(JsObject::new()));
-    let children = &args[2..];
+    let props = args.get(1).cloned().unwrap_or_else(|| JsValue::new_object());
+    let children = if args.len() > 2 { &args[2..] } else { &[] };
     
     match type_ {
         JsValue::String(tag_name) => {
@@ -41,8 +43,9 @@ fn create_element_from_tag(tag: &str, props: &JsValue, children: &[JsValue]) -> 
     
     if let JsValue::Object(props_obj) = props {
         let mut event_handlers = Vec::new();
+        let props_obj = props_obj.borrow();
         
-        for (key, value) in props_obj.properties.iter() {
+        for (key, value) in props_obj.entries() {
             match key.as_str() {
                 "className" => {
                     element_data.push_str(&format!(" class=\"{}\"", value.to_string()));
@@ -77,6 +80,7 @@ fn create_element_from_tag(tag: &str, props: &JsValue, children: &[JsValue]) -> 
             JsValue::String(s) => element_data.push_str(s),
             JsValue::Number(n) => element_data.push_str(&n.to_string()),
             JsValue::Object(obj) => {
+                let obj = obj.borrow();
                 if let Some(data) = obj.get("data") {
                     element_data.push_str(&data.to_string());
                 }
@@ -106,7 +110,7 @@ fn preact_fragment(args: &[JsValue]) -> Result<JsValue, String> {
             JsValue::String(s) => fragment_data.push_str(s),
             JsValue::Number(n) => fragment_data.push_str(&n.to_string()),
             JsValue::Object(obj) => {
-                if let Some(data) = obj.get("data") {
+                if let Some(data) = obj.borrow().get("data") {
                     fragment_data.push_str(&data.to_string());
                 }
             }
@@ -131,16 +135,16 @@ fn preact_render(args: &[JsValue]) -> Result<JsValue, String> {
 
 fn preact_to_child_array(args: &[JsValue]) -> Result<JsValue, String> {
     if args.is_empty() {
-        return Ok(JsValue::Array(vec![]));
+        return Ok(JsValue::new_array());
     }
     
     let children = &args[0];
     match children {
         JsValue::Array(arr) => Ok(JsValue::Array(arr.clone())),
         JsValue::Null | JsValue::Undefined | JsValue::Boolean(false) => {
-            Ok(JsValue::Array(vec![]))
+            Ok(JsValue::new_array())
         }
-        value => Ok(JsValue::Array(vec![value.clone()])),
+        value => Ok(JsValue::Array(Rc::new(RefCell::new(JsArray::from(vec![value.clone()]))))),
     }
 }
 

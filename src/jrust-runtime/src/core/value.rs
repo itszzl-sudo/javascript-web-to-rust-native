@@ -59,8 +59,22 @@ impl JsValue {
         JsValue::Object(Rc::new(RefCell::new(JsObject::new())))
     }
 
+    pub fn new_object_with_data(key: &str, value: String) -> Self {
+        let mut obj = JsObject::new();
+        obj.set(key, JsValue::String(value));
+        JsValue::Object(Rc::new(RefCell::new(obj)))
+    }
+
     pub fn new_array() -> Self {
         JsValue::Array(Rc::new(RefCell::new(JsArray::new())))
+    }
+
+    pub fn new_function<F>(f: F) -> Self
+    where
+        F: Fn(&[JsValue]) -> Result<JsValue, String> + 'static,
+    {
+        let func = JsFunction::new_closure(f);
+        JsValue::Function(Rc::new(RefCell::new(func)))
     }
 
     pub fn is_undefined(&self) -> bool {
@@ -201,5 +215,11 @@ impl From<&str> for JsValue {
 impl From<String> for JsValue {
     fn from(s: String) -> Self {
         JsValue::new_string(s)
+    }
+}
+
+impl From<JsObject> for JsValue {
+    fn from(obj: JsObject) -> Self {
+        JsValue::Object(Rc::new(RefCell::new(obj)))
     }
 }

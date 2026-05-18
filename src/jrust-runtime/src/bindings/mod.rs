@@ -7,6 +7,8 @@ pub mod preact;
 pub mod solid;
 pub mod react;
 pub mod angular;
+pub mod lit;
+pub mod qwik;
 
 use crate::core::{JsValue};
 use std::collections::HashMap;
@@ -85,6 +87,8 @@ pub fn register_all_framework_bindings(registry: &mut BindingRegistry) {
     solid::register_solid_bindings(registry);
     react::register_react_bindings(registry);
     angular::register_angular_bindings(registry);
+    lit::register_lit_bindings(registry);
+    qwik::register_qwik_bindings(registry);
 }
 
 /// 转换 JsValue 为 &str

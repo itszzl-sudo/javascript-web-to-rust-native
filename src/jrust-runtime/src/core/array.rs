@@ -66,6 +66,25 @@ impl JsArray {
     pub fn to_vec(&self) -> Vec<JsValue> {
         self.elements.clone()
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &JsValue> {
+        self.elements.iter()
+    }
+}
+
+impl IntoIterator for JsArray {
+    type Item = JsValue;
+    type IntoIter = std::vec::IntoIter<JsValue>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.elements.into_iter()
+    }
+}
+
+impl From<Vec<JsValue>> for JsArray {
+    fn from(elements: Vec<JsValue>) -> Self {
+        JsArray { elements }
+    }
 }
 
 impl Default for JsArray {

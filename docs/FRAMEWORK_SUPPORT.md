@@ -20,6 +20,8 @@
 | **SolidJS** | ✅ 支持 | Solid 编译器 | 极小 | ✅ 已实现 |
 | **React** | ✅ 支持 | SWC JSX 转换 | Hooks 实现 | ✅ 已实现 |
 | **Angular** | ✅ 支持 | AOT 编译 | Ivy 指令 | ✅ 已实现 |
+| **Lit** | ✅ 支持 | 无需编译 | Web Components | ✅ 已实现 |
+| **Qwik** | ✅ 支持 | Qwik 优化器 | 可恢复性 | ✅ 已实现 |
 
 ---
 
@@ -449,17 +451,20 @@ function CounterComponent_Template(rf, ctx) {
 2. **Svelte**: ✅ 已实现 - `bindings/svelte.rs`
 3. **Preact**: ✅ 已实现 - `bindings/preact.rs`
 4. **SolidJS**: ✅ 已实现 - `bindings/solid.rs`
-5. **框架检测**: ✅ 已实现 - `translator/framework.rs`
+5. **React**: ✅ 已实现 - `bindings/react.rs` (含 Hooks)
+6. **Angular**: ✅ 已实现 - `bindings/angular.rs` (Ivy 指令)
+7. **Lit**: ✅ 已实现 - `bindings/lit.rs` (Web Components)
+8. **Qwik**: ✅ 已实现 - `bindings/qwik.rs` (可恢复性)
+9. **框架检测**: ✅ 已实现 - `translator/framework.rs`
 
-### P1 - 近期支持
+### P1 - 已完成 ✅
 
-1. **React**: 需要完整运行时实现
-2. **Lit**: Web Components
+所有主流框架已实现。
 
-### P2 - 远期支持
+### P2 - 可选扩展
 
-1. **Angular**: 复杂度最高
-2. **Qwik**: 特殊机制
+1. **Alpine.js**: 轻量级框架
+2. **Stencil**: Web Components 工具
 
 ---
 
@@ -532,12 +537,16 @@ impl Framework {
 
 ### 已完成框架支持
 
-| 框架 | 实现位置 | 测试状态 |
-|------|---------|---------|
-| Vue 3 | 预编译方案 | ✅ 已验证 |
-| Svelte | `bindings/svelte.rs` | ✅ 测试通过 |
-| Preact | `bindings/preact.rs` | ✅ 测试通过 |
-| SolidJS | `bindings/solid.rs` | ✅ 测试通过 |
+| 框架 | 实现位置 | 绑定函数数 | 测试状态 |
+|------|---------|-----------|---------|
+| Vue 3 | 预编译方案 | - | ✅ 已验证 |
+| Svelte | `bindings/svelte.rs` | 14 | ✅ 测试通过 |
+| Preact | `bindings/preact.rs` | 7 | ✅ 测试通过 |
+| SolidJS | `bindings/solid.rs` | 15 | ✅ 测试通过 |
+| React | `bindings/react.rs` | 25+ | ✅ 测试通过 |
+| Angular | `bindings/angular.rs` | 40+ | ✅ 测试通过 |
+| Lit | `bindings/lit.rs` | 50+ | ✅ 测试通过 |
+| Qwik | `bindings/qwik.rs` | 50+ | ✅ 测试通过 |
 
 ### 核心实现
 

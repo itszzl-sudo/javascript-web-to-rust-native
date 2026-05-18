@@ -3,7 +3,7 @@
 //! 实现 Angular Ivy 渲染引擎的指令和依赖注入系统
 
 use crate::bindings::BindingRegistry;
-use crate::core::{JsValue, JsObject};
+use crate::core::{JsValue, JsObject, JsArray};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::collections::HashMap;
@@ -474,14 +474,15 @@ fn angular_style_map(args: &[JsValue]) -> Result<JsValue, String> {
     }
     
     if let JsValue::Object(style_obj) = &args[0] {
+        let style_obj = style_obj.borrow();
         ANGULAR_CONTEXT.with(|ctx| {
             let mut ctx = ctx.borrow_mut();
             
             if let Some(ref mut view) = ctx.current_view {
                 let node_index = view.current_node_index;
                 if node_index < view.nodes.len() {
-                    for (key, value) in style_obj.properties.iter() {
-                        view.nodes[node_index].styles.insert(key.clone(), value.to_string());
+                    for (key, value) in style_obj.entries() {
+                        view.nodes[node_index].styles.insert(key, value.to_string());
                     }
                 }
             }
@@ -497,15 +498,16 @@ fn angular_class_map(args: &[JsValue]) -> Result<JsValue, String> {
     }
     
     if let JsValue::Object(class_obj) = &args[0] {
+        let class_obj = class_obj.borrow();
         ANGULAR_CONTEXT.with(|ctx| {
             let mut ctx = ctx.borrow_mut();
             
             if let Some(ref mut view) = ctx.current_view {
                 let node_index = view.current_node_index;
                 if node_index < view.nodes.len() {
-                    for (key, value) in class_obj.properties.iter() {
+                    for (key, value) in class_obj.entries() {
                         if value.to_string() == "true" {
-                            view.nodes[node_index].classes.push(key.clone());
+                            view.nodes[node_index].classes.push(key);
                         }
                     }
                 }
@@ -605,7 +607,8 @@ fn angular_projection(args: &[JsValue]) -> Result<JsValue, String> {
 }
 
 fn angular_projection_def(args: &[JsValue]) -> Result<JsValue, String> {
-    Ok(JsValue::Array(args.to_vec()))
+    let arr = JsArray::from(args.to_vec());
+    Ok(JsValue::Array(Rc::new(RefCell::new(arr))))
 }
 
 // ==================== Pipe ====================
@@ -646,11 +649,11 @@ fn angular_define_component(args: &[JsValue]) -> Result<JsValue, String> {
         return Err("ɵɵdefineComponent: requires component config".to_string());
     }
     
-    let obj = JsObject::new();
+    let mut obj = JsObject::new();
     obj.set("type", JsValue::String("component".to_string()));
     obj.set("config", args[0].clone());
     
-    Ok(JsValue::Object(obj))
+    Ok(JsValue::from(obj))
 }
 
 fn angular_define_directive(args: &[JsValue]) -> Result<JsValue, String> {
@@ -658,11 +661,11 @@ fn angular_define_directive(args: &[JsValue]) -> Result<JsValue, String> {
         return Err("ɵɵdefineDirective: requires directive config".to_string());
     }
     
-    let obj = JsObject::new();
+    let mut obj = JsObject::new();
     obj.set("type", JsValue::String("directive".to_string()));
     obj.set("config", args[0].clone());
     
-    Ok(JsValue::Object(obj))
+    Ok(JsValue::from(obj))
 }
 
 fn angular_define_pipe(args: &[JsValue]) -> Result<JsValue, String> {
@@ -670,11 +673,11 @@ fn angular_define_pipe(args: &[JsValue]) -> Result<JsValue, String> {
         return Err("ɵɵdefinePipe: requires pipe config".to_string());
     }
     
-    let obj = JsObject::new();
+    let mut obj = JsObject::new();
     obj.set("type", JsValue::String("pipe".to_string()));
     obj.set("config", args[0].clone());
     
-    Ok(JsValue::Object(obj))
+    Ok(JsValue::from(obj))
 }
 
 fn angular_define_injectable(args: &[JsValue]) -> Result<JsValue, String> {
@@ -682,11 +685,11 @@ fn angular_define_injectable(args: &[JsValue]) -> Result<JsValue, String> {
         return Err("ɵɵdefineInjectable: requires injectable config".to_string());
     }
     
-    let obj = JsObject::new();
+    let mut obj = JsObject::new();
     obj.set("type", JsValue::String("injectable".to_string()));
     obj.set("config", args[0].clone());
     
-    Ok(JsValue::Object(obj))
+    Ok(JsValue::from(obj))
 }
 
 fn angular_define_injector(args: &[JsValue]) -> Result<JsValue, String> {
@@ -734,7 +737,8 @@ fn angular_invalid_factory(_args: &[JsValue]) -> Result<JsValue, String> {
 // ==================== 生命周期 ====================
 
 fn angular_ng_decorators(args: &[JsValue]) -> Result<JsValue, String> {
-    Ok(JsValue::Array(args.to_vec()))
+    let arr = JsArray::from(args.to_vec());
+    Ok(JsValue::Array(Rc::new(RefCell::new(arr))))
 }
 
 fn angular_set_class_metadata(args: &[JsValue]) -> Result<JsValue, String> {
@@ -742,11 +746,11 @@ fn angular_set_class_metadata(args: &[JsValue]) -> Result<JsValue, String> {
         return Ok(JsValue::Undefined);
     }
     
-    let obj = JsObject::new();
+    let mut obj = JsObject::new();
     obj.set("class", args[0].clone());
     obj.set("metadata", args[1].clone());
     
-    Ok(JsValue::Object(obj))
+    Ok(JsValue::from(obj))
 }
 
 // ==================== 工具函数 ====================

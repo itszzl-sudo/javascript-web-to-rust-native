@@ -3,7 +3,7 @@
 //! 实现 SolidJS 的响应式系统和 DOM 操作
 
 use crate::bindings::BindingRegistry;
-use crate::core::{JsValue, JsObject};
+use crate::core::{JsValue, JsObject, JsArray};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -74,10 +74,11 @@ fn solid_create_signal(args: &[JsValue]) -> Result<JsValue, String> {
         format!("signal_{}", signal_id),
     );
     
-    Ok(JsValue::Array(vec![
+    let arr = JsArray::from(vec![
         JsValue::new_object_with_data("signal", format!("{}:{:?}", signal_id, initial_value)),
         setter,
-    ]))
+    ]);
+    Ok(JsValue::Array(Rc::new(RefCell::new(arr))))
 }
 
 fn solid_create_effect(args: &[JsValue]) -> Result<JsValue, String> {

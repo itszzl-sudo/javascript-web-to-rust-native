@@ -1,16 +1,18 @@
 use std::fmt;
+use std::rc::Rc;
 use crate::core::JsValue;
 
 pub type NativeFunction = fn(&[JsValue]) -> JsValue;
+pub type ClosureFunction = Rc<dyn Fn(&[JsValue]) -> Result<JsValue, String>>;
 
 #[derive(Clone)]
 pub enum JsFunction {
     Native(NativeFunction),
+    Closure(ClosureFunction),
 }
 
 impl PartialEq for JsFunction {
     fn eq(&self, _other: &Self) -> bool {
-        // Function pointers can't be compared in a meaningful way for our use case
         true
     }
 }
@@ -20,9 +22,17 @@ impl JsFunction {
         JsFunction::Native(func)
     }
 
-    pub fn call(&self, args: &[JsValue]) -> JsValue {
+    pub fn new_closure<F>(f: F) -> Self
+    where
+        F: Fn(&[JsValue]) -> Result<JsValue, String> + 'static,
+    {
+        JsFunction::Closure(Rc::new(f))
+    }
+
+    pub fn call(&self, args: &[JsValue]) -> Result<JsValue, String> {
         match self {
-            JsFunction::Native(func) => func(args),
+            JsFunction::Native(func) => Ok(func(args)),
+            JsFunction::Closure(func) => func(args),
         }
     }
 }

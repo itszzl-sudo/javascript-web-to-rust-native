@@ -3,7 +3,7 @@
 //! 实现 React 的 createElement、Hooks 和组件系统
 
 use crate::bindings::BindingRegistry;
-use crate::core::{JsValue, JsObject, JsFunction};
+use crate::core::{JsValue, JsObject, JsFunction, JsArray};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::collections::HashMap;
@@ -118,18 +118,23 @@ fn react_create_element(args: &[JsValue]) -> Result<JsValue, String> {
     }
     
     let type_ = &args[0];
-    let props = args.get(1).cloned().unwrap_or(JsValue::Object(JsObject::new()));
-    let children = &args[2..];
+    let props = args.get(1).cloned().unwrap_or(JsValue::new_object());
+    let children = if args.len() > 2 { &args[2..] } else { &[] };
     
     match type_ {
         JsValue::String(tag_name) => {
             create_element_from_tag(&tag_name, &props, children)
         }
-        JsValue::Function(component_fn) => {
-            invoke_function_component(component_fn, &props, children)
+        JsValue::Function(_) => {
+            invoke_function_component(type_, &props, children)
         }
-        JsValue::Object(obj) if obj.get("$$typeof").map(|v| v.to_string()) == Some("Symbol(react.fragment)".to_string()) => {
-            create_fragment(children)
+        JsValue::Object(obj) => {
+            let obj = obj.borrow();
+            if obj.get("$$typeof").map(|v| v.to_string()) == Some("Symbol(react.fragment)".to_string()) {
+                create_fragment(children)
+            } else {
+                Ok(JsValue::Null)
+            }
         }
         _ => {
             Ok(JsValue::Null)
@@ -143,7 +148,8 @@ fn create_element_from_tag(tag: &str, props: &JsValue, children: &[JsValue]) -> 
     let mut style_data = String::new();
     
     if let JsValue::Object(props_obj) = props {
-        for (key, value) in props_obj.properties.iter() {
+        let props_obj = props_obj.borrow();
+        for (key, value) in props_obj.entries() {
             match key.as_str() {
                 "className" => {
                     element_data.push_str(&format!(" class=\"{}\"", escape_html(&value.to_string())));
@@ -154,8 +160,9 @@ fn create_element_from_tag(tag: &str, props: &JsValue, children: &[JsValue]) -> 
                 "key" | "ref" => {
                 }
                 "style" => {
-                    if let JsValue::Object(style_obj) = value {
-                        for (prop, val) in style_obj.properties.iter() {
+                    if let JsValue::Object(style_obj) = &value {
+                        let style_obj = style_obj.borrow();
+                        for (prop, val) in style_obj.entries() {
                             if !style_data.is_empty() {
                                 style_data.push_str("; ");
                             }
@@ -193,22 +200,22 @@ fn create_element_from_tag(tag: &str, props: &JsValue, children: &[JsValue]) -> 
         element_data.push_str(&format!("</{}>", tag));
     }
     
-    let result_obj = JsObject::new();
+    let mut result_obj = JsObject::new();
     result_obj.set("type", JsValue::String(tag.to_string()));
     result_obj.set("props", props.clone());
     result_obj.set("data", JsValue::String(element_data));
-    result_obj.set("events", JsValue::Array(
-        event_handlers.into_iter()
-            .map(|(e, h)| {
-                let obj = JsObject::new();
-                obj.set("event", JsValue::String(e));
-                obj.set("handler", h);
-                JsValue::Object(obj)
-            })
-            .collect()
-    ));
     
-    Ok(JsValue::Object(result_obj))
+    let events: Vec<JsValue> = event_handlers.into_iter()
+        .map(|(e, h)| {
+            let mut obj = JsObject::new();
+            obj.set("event", JsValue::String(e));
+            obj.set("handler", h);
+            JsValue::from(obj)
+        })
+        .collect();
+    result_obj.set("events", JsValue::Array(Rc::new(RefCell::new(JsArray::from(events)))));
+    
+    Ok(JsValue::from(result_obj))
 }
 
 fn append_child_content(element_data: &mut String, child: &JsValue) {
@@ -217,12 +224,13 @@ fn append_child_content(element_data: &mut String, child: &JsValue) {
         JsValue::Number(n) => element_data.push_str(&n.to_string()),
         JsValue::Boolean(b) => if *b { element_data.push_str("true"); },
         JsValue::Object(obj) => {
-            if let Some(data) = obj.get("data") {
+            if let Some(data) = obj.borrow().get("data") {
                 element_data.push_str(&data.to_string());
             }
         }
         JsValue::Array(arr) => {
-            for item in arr {
+            let arr = arr.borrow();
+            for item in arr.iter() {
                 append_child_content(element_data, item);
             }
         }
@@ -241,16 +249,23 @@ fn invoke_function_component(component_fn: &JsValue, props: &JsValue, children: 
     });
     
     let mut props_with_children = match props {
-        JsValue::Object(obj) => obj.clone(),
+        JsValue::Object(obj) => {
+            let obj = obj.borrow();
+            let mut cloned = JsObject::new();
+            for (k, v) in obj.entries() {
+                cloned.set(k, v);
+            }
+            cloned
+        }
         _ => JsObject::new(),
     };
     
     if !children.is_empty() {
-        props_with_children.set("children", JsValue::Array(children.to_vec()));
+        props_with_children.set("children", JsValue::Array(Rc::new(RefCell::new(JsArray::from(children.to_vec())))));
     }
     
     let result = match component_fn {
-        JsValue::Function(f) => f.call(&[JsValue::Object(props_with_children)]),
+        JsValue::Function(f) => f.borrow().call(&[JsValue::from(props_with_children)]),
         _ => Ok(JsValue::Null),
     };
     
@@ -267,11 +282,11 @@ fn create_fragment(children: &[JsValue]) -> Result<JsValue, String> {
         append_child_content(&mut fragment_data, child);
     }
     
-    let obj = JsObject::new();
+    let mut obj = JsObject::new();
     obj.set("type", JsValue::String("fragment".to_string()));
     obj.set("data", JsValue::String(fragment_data));
     
-    Ok(JsValue::Object(obj))
+    Ok(JsValue::from(obj))
 }
 
 fn react_fragment(args: &[JsValue]) -> Result<JsValue, String> {
@@ -290,20 +305,25 @@ fn react_clone_element(args: &[JsValue]) -> Result<JsValue, String> {
     
     let merged_props = match (element, new_props) {
         (JsValue::Object(el), Some(JsValue::Object(np))) => {
-            let merged = el.clone();
-            for (k, v) in np.properties.iter() {
-                merged.set(k, v.clone());
+            let el = el.borrow();
+            let np = np.borrow();
+            let mut merged = JsObject::new();
+            for (k, v) in el.entries() {
+                merged.set(k, v);
             }
-            JsValue::Object(merged)
+            for (k, v) in np.entries() {
+                merged.set(k, v);
+            }
+            JsValue::from(merged)
         }
         (_, Some(p)) => p.clone(),
-        (JsValue::Object(el), None) => JsValue::Object(el.clone()),
-        _ => JsValue::Object(JsObject::new()),
+        (JsValue::Object(_), None) => element.clone(),
+        _ => JsValue::new_object(),
     };
     
     react_create_element(&[
         match element {
-            JsValue::Object(el) => el.get("type").unwrap_or(JsValue::String("div".to_string())),
+            JsValue::Object(el) => el.borrow().get("type").unwrap_or(JsValue::String("div".to_string())),
             _ => JsValue::String("div".to_string()),
         },
         merged_props,
@@ -340,7 +360,8 @@ fn react_use_state(args: &[JsValue]) -> Result<JsValue, String> {
         (state, setter)
     });
     
-    Ok(JsValue::Array(vec![state, setter]))
+    let arr = JsArray::from(vec![state, setter]);
+    Ok(JsValue::Array(Rc::new(RefCell::new(arr))))
 }
 
 fn create_state_setter(component_id: ComponentId, hook_index: usize) -> JsValue {
@@ -362,7 +383,7 @@ fn create_state_setter(component_id: ComponentId, hook_index: usize) -> JsValue 
                 };
                 
                 let updated = match new_value {
-                    JsValue::Function(f) => f.call(&[current])?,
+                    JsValue::Function(f) => f.borrow().call(&[current.clone()]).unwrap_or(current),
                     v => v.clone(),
                 };
                 
@@ -388,7 +409,13 @@ fn react_use_effect(args: &[JsValue]) -> Result<JsValue, String> {
         _ => return Err("useEffect: first argument must be function".to_string()),
     };
     
-    let deps = args.get(1).cloned();
+    let deps: Option<Vec<JsValue>> = args.get(1).and_then(|d| {
+        if let JsValue::Array(arr) = d {
+            Some(arr.borrow().to_vec())
+        } else {
+            None
+        }
+    });
     
     REACT_CONTEXT.with(|ctx| {
         let mut ctx = ctx.borrow_mut();
@@ -405,9 +432,9 @@ fn react_use_effect(args: &[JsValue]) -> Result<JsValue, String> {
             component.effect_cleanups.push(None);
             component.prev_deps.push(deps.clone());
             
-            let cleanup = effect_fn.call(&[]).ok();
+            let cleanup = effect_fn.borrow().call(&[]).ok();
             if let Some(JsValue::Function(f)) = cleanup {
-                component.effect_cleanups[hook_index] = Some(f);
+                component.effect_cleanups[hook_index] = Some(f.borrow().clone());
             }
         } else {
             let should_run = match (&component.prev_deps[hook_index], &deps) {
@@ -422,9 +449,9 @@ fn react_use_effect(args: &[JsValue]) -> Result<JsValue, String> {
                     let _ = cleanup.call(&[]);
                 }
                 
-                let cleanup = effect_fn.call(&[]).ok();
+                let cleanup = effect_fn.borrow().call(&[]).ok();
                 if let Some(JsValue::Function(f)) = cleanup {
-                    component.effect_cleanups[hook_index] = Some(f);
+                    component.effect_cleanups[hook_index] = Some(f.borrow().clone());
                 }
                 
                 component.prev_deps[hook_index] = deps;
@@ -471,9 +498,9 @@ fn react_use_ref(args: &[JsValue]) -> Result<JsValue, String> {
         let component_id = match ctx.current_component() {
             Some(id) => id,
             None => {
-                let obj = JsObject::new();
+                let mut obj = JsObject::new();
                 obj.set("current", initial_value);
-                return Ok(JsValue::Object(obj));
+                return Ok(JsValue::from(obj));
             }
         };
         
@@ -481,7 +508,7 @@ fn react_use_ref(args: &[JsValue]) -> Result<JsValue, String> {
         let component = ctx.get_or_create_component(component_id);
         
         if hook_index >= component.hooks.len() {
-            let obj = JsObject::new();
+            let mut obj = JsObject::new();
             obj.set("current", initial_value);
             component.hooks.push(HookValue::Ref(obj));
             component.effect_cleanups.push(None);
@@ -489,11 +516,11 @@ fn react_use_ref(args: &[JsValue]) -> Result<JsValue, String> {
         }
         
         match &component.hooks[hook_index] {
-            HookValue::Ref(obj) => Ok(JsValue::Object(obj.clone())),
+            HookValue::Ref(obj) => Ok(JsValue::from(obj.clone())),
             _ => {
-                let obj = JsObject::new();
+                let mut obj = JsObject::new();
                 obj.set("current", JsValue::Null);
-                Ok(JsValue::Object(obj))
+                Ok(JsValue::from(obj))
             }
         }
     })
@@ -509,21 +536,27 @@ fn react_use_memo(args: &[JsValue]) -> Result<JsValue, String> {
         _ => return Err("useMemo: first argument must be function".to_string()),
     };
     
-    let deps = args.get(1).cloned();
+    let deps: Option<Vec<JsValue>> = args.get(1).and_then(|d| {
+        if let JsValue::Array(arr) = d {
+            Some(arr.borrow().to_vec())
+        } else {
+            None
+        }
+    });
     
     REACT_CONTEXT.with(|ctx| {
         let mut ctx = ctx.borrow_mut();
         
         let component_id = match ctx.current_component() {
             Some(id) => id,
-            None => return factory.call(&[]),
+            None => return factory.borrow().call(&[]),
         };
         
         let hook_index = ctx.next_hook_index();
         let component = ctx.get_or_create_component(component_id);
         
         if hook_index >= component.hooks.len() {
-            let value = factory.call(&[])?;
+            let value = factory.borrow().call(&[])?;
             component.hooks.push(HookValue::Memo(value.clone()));
             component.effect_cleanups.push(None);
             component.prev_deps.push(deps.clone());
@@ -538,7 +571,7 @@ fn react_use_memo(args: &[JsValue]) -> Result<JsValue, String> {
         };
         
         if should_recompute {
-            let value = factory.call(&[])?;
+            let value = factory.borrow().call(&[])?;
             component.hooks[hook_index] = HookValue::Memo(value.clone());
             component.prev_deps[hook_index] = deps;
             return Ok(value);
@@ -546,7 +579,7 @@ fn react_use_memo(args: &[JsValue]) -> Result<JsValue, String> {
         
         match &component.hooks[hook_index] {
             HookValue::Memo(v) => Ok(v.clone()),
-            _ => factory.call(&[]),
+            _ => factory.borrow().call(&[]),
         }
     })
 }
@@ -557,7 +590,13 @@ fn react_use_callback(args: &[JsValue]) -> Result<JsValue, String> {
     }
     
     let callback = &args[0];
-    let deps = args.get(1).cloned();
+    let deps: Option<Vec<JsValue>> = args.get(1).and_then(|d| {
+        if let JsValue::Array(arr) = d {
+            Some(arr.borrow().to_vec())
+        } else {
+            None
+        }
+    });
     
     REACT_CONTEXT.with(|ctx| {
         let mut ctx = ctx.borrow_mut();
@@ -611,7 +650,8 @@ fn react_use_reducer(args: &[JsValue]) -> Result<JsValue, String> {
     
     let dispatch = JsValue::new_function(|_| Ok(JsValue::Undefined));
     
-    Ok(JsValue::Array(vec![initial_arg, dispatch]))
+    let arr = JsArray::from(vec![initial_arg, dispatch]);
+    Ok(JsValue::Array(Rc::new(RefCell::new(arr))))
 }
 
 fn react_use_imperative_handle(args: &[JsValue]) -> Result<JsValue, String> {
@@ -634,12 +674,13 @@ fn react_use_id(_args: &[JsValue]) -> Result<JsValue, String> {
 fn react_use_transition(args: &[JsValue]) -> Result<JsValue, String> {
     let start_transition = JsValue::new_function(|args| {
         if let Some(JsValue::Function(f)) = args.get(0) {
-            let _ = f.call(&[]);
+            let _ = f.borrow().call(&[]);
         }
         Ok(JsValue::Undefined)
     });
     
-    Ok(JsValue::Array(vec![JsValue::Boolean(false), start_transition]))
+    let arr = JsArray::from(vec![JsValue::Boolean(false), start_transition]);
+    Ok(JsValue::Array(Rc::new(RefCell::new(arr))))
 }
 
 fn react_use_deferred_value(args: &[JsValue]) -> Result<JsValue, String> {
@@ -650,9 +691,9 @@ fn react_use_deferred_value(args: &[JsValue]) -> Result<JsValue, String> {
 }
 
 fn react_create_ref(_args: &[JsValue]) -> Result<JsValue, String> {
-    let obj = JsObject::new();
+    let mut obj = JsObject::new();
     obj.set("current", JsValue::Null);
-    Ok(JsValue::Object(obj))
+    Ok(JsValue::from(obj))
 }
 
 fn react_forward_ref(args: &[JsValue]) -> Result<JsValue, String> {
