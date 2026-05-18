@@ -106,6 +106,10 @@ fn main() {
                 println!("下一步 (嵌入模式):");
                 println!("  1. 链接生成库: compiler.link(&obj, \"{}.lib\")", output_name);
                 println!("  2. 嵌入到其他程序中使用 API");
+                println!();
+                println!("API 文档:");
+                println!("  查看 docs/EMBED_API.md 了解完整 API 接口");
+                println!("  包含 Rust API、C FFI、Python、Node.js 绑定示例");
             } else {
                 println!("下一步 (窗口模式):");
                 println!("  1. 链接生成可执行文件: compiler.link(&obj, \"rust-browser.lib\", \"{}.exe\")", output_name);
