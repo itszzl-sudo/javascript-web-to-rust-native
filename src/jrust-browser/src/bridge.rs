@@ -1,8 +1,9 @@
 
 //! Browser Bridge - Integration with rust-browser
 //! 
-//! This module provides a high-level interface to rust-browser's WebNativeBridge
+//! This module provides a high-level interface to rust-browser's DefaultWebNativeBridge
 
+use rust_browser::bridge_impl::DefaultWebNativeBridge;
 use rust_browser::bridge::WebNativeBridge;
 use serde::{Serialize, Deserialize};
 
@@ -58,9 +59,9 @@ impl BrowserConfig {
     }
 }
 
-/// Browser instance wrapping WebNativeBridge
+/// Browser instance wrapping DefaultWebNativeBridge
 pub struct BrowserInstance {
-    bridge: WebNativeBridge,
+    bridge: DefaultWebNativeBridge,
     config: BrowserConfig,
 }
 
@@ -131,12 +132,15 @@ impl BrowserInstance {
 
     /// Get element rectangle
     pub fn get_rect(&self, selector: &str) -> Option<(f32, f32, f32, f32)> {
-        self.bridge.get_rect(selector)
+        self.bridge.get_rect(selector).map(|r| (r.x, r.y, r.width, r.height))
     }
 
     /// Get all element rectangles
     pub fn all_rects(&self) -> Vec<(usize, String, f32, f32, f32, f32)> {
         self.bridge.all_rects()
+            .into_iter()
+            .map(|n| (n.dom_node, n.tag_name, n.x, n.y, n.width, n.height))
+            .collect()
     }
 
     /// Handle click event
@@ -160,16 +164,6 @@ impl BrowserInstance {
     /// Set viewport size
     pub fn set_viewport(&mut self, width: u32, height: u32) {
         self.bridge.set_viewport(width, height);
-    }
-
-    /// Get DOM reference
-    pub fn dom(&self) -> &rust_browser::dom_wrapper::DomWrapper {
-        self.bridge.dom()
-    }
-
-    /// Get DOM mutable reference
-    pub fn dom_mut(&mut self) -> &mut rust_browser::dom_wrapper::DomWrapper {
-        self.bridge.dom_mut()
     }
 }
 
