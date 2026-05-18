@@ -7,11 +7,13 @@ pub mod codegen;
 pub mod compiler;
 pub mod ir_gen;
 pub mod splitter;
+pub mod framework;
 
 pub use compiler::{CompileResult, Compiler};
 pub use error::{Error, Result};
 pub use ir_gen::IrGenerator;
 pub use splitter::{CodeSplitter, SplitAnalysis, CodeRole};
+pub use framework::{Framework, detect_framework, FrameworkDetectionResult};
 
 pub fn compile(source: &str) -> Result<CompileResult> {
     let mut compiler = Compiler::new();

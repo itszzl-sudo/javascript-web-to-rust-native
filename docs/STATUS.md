@@ -2,23 +2,35 @@
 
 **更新日期**: 2026-05-18  
 **当前阶段**: Phase 3 进行中  
-**总体完成度**: 约 70%
+**总体完成度**: 约 75%
 
 ---
 
 ## 完成状态
 
-### 核心组件 (已完成 70%)
+### 核心组件 (已完成 75%)
 
 | 模块 | 完成度 | 测试状态 | 说明 |
 |------|--------|---------|------|
 | jrust-translator | ✅ 100% | 65 passed, 1 ignored | JavaScript → Rust 转译器 |
-| jrust-runtime | ✅ 85% | 36 passed | DOM/BOM API 运行时 |
+| jrust-runtime | ✅ 90% | 36 passed | DOM/BOM API 运行时 |
 | cranelift-compiler | ✅ 100% | - | Cranelift 原生编译器封装 |
 | binding-generator | ✅ 100% | - | 过程宏绑定生成器 |
 | director | ✅ 100% | - | CLI 编排工具 |
 | jrust-servo | ✅ 100% | - | Servo 浏览器集成 |
 | jrust-browser | ⚠️ 90% | - | rust-browser 集成（待配置） |
+
+### 框架支持 (已完成)
+
+| 框架 | 完成度 | 测试状态 | 说明 |
+|------|--------|---------|------|
+| Vue 3 | ✅ 100% | 已验证 | 预编译方案完整支持 |
+| Svelte | ✅ 100% | 测试通过 | `bindings/svelte.rs` |
+| Preact | ✅ 100% | 测试通过 | `bindings/preact.rs` |
+| SolidJS | ✅ 100% | 测试通过 | `bindings/solid.rs` |
+| 框架检测 | ✅ 100% | 测试通过 | `translator/framework.rs` |
+| React | ⚠️ 30% | - | 需要完整运行时 |
+| Angular | ⚠️ 0% | - | 规划中 |
 
 ### 功能模块
 

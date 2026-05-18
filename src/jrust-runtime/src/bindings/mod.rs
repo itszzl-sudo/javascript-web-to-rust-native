@@ -2,6 +2,10 @@
 //! 
 //! JavaScript → Rust API 绑定系统
 
+pub mod svelte;
+pub mod preact;
+pub mod solid;
+
 use crate::core::{JsValue};
 use std::collections::HashMap;
 
@@ -69,6 +73,14 @@ pub fn register_dom_bindings(registry: &mut BindingRegistry) {
         }
         Ok(JsValue::Undefined) // TODO: 实现
     });
+}
+
+/// 注册所有框架绑定
+pub fn register_all_framework_bindings(registry: &mut BindingRegistry) {
+    register_dom_bindings(registry);
+    svelte::register_svelte_bindings(registry);
+    preact::register_preact_bindings(registry);
+    solid::register_solid_bindings(registry);
 }
 
 /// 转换 JsValue 为 &str

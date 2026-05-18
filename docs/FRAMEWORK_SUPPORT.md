@@ -12,15 +12,14 @@
 
 ## 框架支持矩阵
 
-| 框架 | 支持级别 | 预编译方案 | 运行时依赖 | 优先级 |
-|------|---------|-----------|-----------|--------|
-| **Vue 3** | ✅ 完整支持 | Vite + @vitejs/plugin-vue | 极小 | P0 |
-| **Svelte** | ✅ 原生支持 | Svelte 编译器 | 几乎无 | P0 |
-| **React** | ⚠️ 部分支持 | SWC JSX 转换 | React 运行时 | P1 |
-| **Preact** | ✅ 易支持 | SWC JSX 转换 | 极小 | P1 |
-| **Solid** | ✅ 易支持 | Solid 编译器 | 极小 | P1 |
-| **Angular** | ⚠️ 复杂 | AOT 编译 | Angular 运行时 | P2 |
-| **Qwik** | ⚠️ 特殊 | Qwik 优化器 | 特殊加载 | P2 |
+| 框架 | 支持级别 | 预编译方案 | 运行时依赖 | 实现状态 |
+|------|---------|-----------|-----------|---------|
+| **Vue 3** | ✅ 完整支持 | Vite + @vitejs/plugin-vue | 极小 | ✅ 已实现 |
+| **Svelte** | ✅ 原生支持 | Svelte 编译器 | 几乎无 | ✅ 已实现 |
+| **Preact** | ✅ 支持 | SWC JSX 转换 | 极小 | ✅ 已实现 |
+| **SolidJS** | ✅ 支持 | Solid 编译器 | 极小 | ✅ 已实现 |
+| **React** | ⚠️ 部分支持 | SWC JSX 转换 | React 运行时 | 🚧 规划中 |
+| **Angular** | ⚠️ 复杂 | AOT 编译 | Angular 运行时 | 🚧 规划中 |
 
 ---
 
@@ -444,22 +443,23 @@ function CounterComponent_Template(rf, ctx) {
 
 ## 实现优先级
 
-### P0 - 立即支持
+### P0 - 已完成 ✅
 
-1. **Vue 3**: ✅ 已支持
-2. **Svelte**: 编译时框架，易支持
+1. **Vue 3**: ✅ 已支持 - 完整预编译方案
+2. **Svelte**: ✅ 已实现 - `bindings/svelte.rs`
+3. **Preact**: ✅ 已实现 - `bindings/preact.rs`
+4. **SolidJS**: ✅ 已实现 - `bindings/solid.rs`
+5. **框架检测**: ✅ 已实现 - `translator/framework.rs`
 
 ### P1 - 近期支持
 
-1. **Preact**: React 兼容，体积小
-2. **SolidJS**: 细粒度响应式
-3. **Lit**: Web Components
+1. **React**: 需要完整运行时实现
+2. **Lit**: Web Components
 
 ### P2 - 远期支持
 
-1. **React**: 需要完整运行时
-2. **Angular**: 复杂度最高
-3. **Qwik**: 特殊机制
+1. **Angular**: 复杂度最高
+2. **Qwik**: 特殊机制
 
 ---
 
@@ -530,8 +530,36 @@ impl Framework {
 
 ## 总结
 
-1. **Vue 3 和 Svelte** 最易支持，推荐优先使用
-2. **Preact 和 SolidJS** 可快速支持
-3. **React** 需要实现运行时，工作量中等
-4. **Angular** 复杂度最高，建议远期考虑
-5. 所有框架最终都转换为标准 JS，jrust-translator 统一处理
+### 已完成框架支持
+
+| 框架 | 实现位置 | 测试状态 |
+|------|---------|---------|
+| Vue 3 | 预编译方案 | ✅ 已验证 |
+| Svelte | `bindings/svelte.rs` | ✅ 测试通过 |
+| Preact | `bindings/preact.rs` | ✅ 测试通过 |
+| SolidJS | `bindings/solid.rs` | ✅ 测试通过 |
+
+### 核心实现
+
+1. **框架检测**: `jrust-translator/src/framework.rs` - 自动检测编译产物所属框架
+2. **运行时绑定**: `jrust-runtime/src/bindings/` - 各框架 API 绑定
+3. **统一入口**: `register_all_framework_bindings()` - 一键注册所有绑定
+
+### 使用方式
+
+```rust
+use jrust_runtime::bindings::{BindingRegistry, register_all_framework_bindings};
+
+let mut registry = BindingRegistry::new();
+register_all_framework_bindings(&mut registry);
+
+// 自动检测框架
+let result = jrust_translator::detect_framework(js_code);
+println!("Detected: {}", result.primary.name());
+```
+
+### 下一步
+
+1. **React 完整运行时**: 实现 Hooks、虚拟 DOM
+2. **Lit 支持**: Web Components 标准实现
+3. **性能优化**: 各框架特定优化路径
