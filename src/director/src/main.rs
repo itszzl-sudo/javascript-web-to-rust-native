@@ -13,6 +13,7 @@ fn main() {
     let mut input_file: Option<String> = None;
     let mut output_name = "app".to_string();
     let mut output_dir = "dist".to_string();
+    let mut embed_mode = false;
     
     let mut i = 1;
     while i < args.len() {
@@ -34,6 +35,9 @@ fn main() {
                 if i < args.len() {
                     output_dir = args[i].clone();
                 }
+            }
+            "--embed" | "-e" => {
+                embed_mode = true;
             }
             "--help" | "-h" => {
                 print_usage();
@@ -63,6 +67,7 @@ fn main() {
     println!("输入文件: {}", input_file);
     println!("输出名称: {}", output_name);
     println!("输出目录: {}", output_dir);
+    println!("模式: {}", if embed_mode { "嵌入 (embed)" } else { "窗口 (window)" });
     println!();
     
     let js_content = match fs::read_to_string(&input_file) {
@@ -93,12 +98,19 @@ fn main() {
             if let Err(e) = fs::copy(&obj_path, &final_obj) {
                 eprintln!("⚠️  复制目标文件失败: {}", e);
             } else {
-                println!("输出位置: {:?}", final_obj);
+            println!("输出位置: {:?}", final_obj);
             }
             
             println!();
-            println!("下一步:");
-            println!("  compiler.link_with_lib(&obj, \"rust-browser.lib\", \"{}.exe\")", output_name);
+            if embed_mode {
+                println!("下一步 (嵌入模式):");
+                println!("  1. 链接生成库: compiler.link(&obj, \"{}.lib\")", output_name);
+                println!("  2. 嵌入到其他程序中使用 API");
+            } else {
+                println!("下一步 (窗口模式):");
+                println!("  1. 链接生成可执行文件: compiler.link(&obj, \"rust-browser.lib\", \"{}.exe\")", output_name);
+                println!("  2. 运行窗口应用: .\\{}.exe", output_name);
+            }
         }
         Err(e) => {
             eprintln!();
@@ -109,7 +121,7 @@ fn main() {
 }
 
 fn print_usage() {
-    println!("Director CLI - Vue 项目 → Native 可执行文件编译器");
+    println!("Director CLI - Vue 项目 → Native 编译器");
     println!();
     println!("用法:");
     println!("  director --input <js-file> [options]");
@@ -119,15 +131,23 @@ fn print_usage() {
     println!("  -i, --input <file>   输入 JS 文件路径");
     println!("  -n, --name <name>    输出名称 (默认: app)");
     println!("  -o, --output <dir>   输出目录 (默认: dist)");
+    println!("  -e, --embed          嵌入模式 (生成库，无窗口)");
     println!("  -h, --help           显示帮助信息");
     println!();
+    println!("模式:");
+    println!("  默认        窗口模式 - 生成独立应用 (需要 egui)");
+    println!("  --embed     嵌入模式 - 生成库 (无 egui 依赖)");
+    println!();
     println!("示例:");
+    println!("  # 窗口模式 (独立应用)");
     println!("  director --input ./dist/assets/index.js --name my-app");
-    println!("  director ./app.js -n my-app -o ./output");
+    println!();
+    println!("  # 嵌入模式 (库)");
+    println!("  director --input ./dist/assets/index.js --name my-lib --embed");
     println!();
     println!("流程:");
     println!("  1. 读取 JS 文件 (已优化的 Vue 项目输出)");
     println!("  2. JS → Cranelift IR (jrust-translator)");
     println!("  3. IR → 目标文件 (cranelift-compiler)");
-    println!("  4. 输出 .obj 文件 (待链接 rust-browser.lib)");
+    println!("  4. 输出 .obj 文件 (待链接)");
 }
