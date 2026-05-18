@@ -6,6 +6,7 @@ pub mod svelte;
 pub mod preact;
 pub mod solid;
 pub mod react;
+pub mod angular;
 
 use crate::core::{JsValue};
 use std::collections::HashMap;
@@ -83,6 +84,7 @@ pub fn register_all_framework_bindings(registry: &mut BindingRegistry) {
     preact::register_preact_bindings(registry);
     solid::register_solid_bindings(registry);
     react::register_react_bindings(registry);
+    angular::register_angular_bindings(registry);
 }
 
 /// 转换 JsValue 为 &str

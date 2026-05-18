@@ -19,7 +19,7 @@
 | **Preact** | ✅ 支持 | SWC JSX 转换 | 极小 | ✅ 已实现 |
 | **SolidJS** | ✅ 支持 | Solid 编译器 | 极小 | ✅ 已实现 |
 | **React** | ✅ 支持 | SWC JSX 转换 | Hooks 实现 | ✅ 已实现 |
-| **Angular** | ⚠️ 复杂 | AOT 编译 | Angular 运行时 | 🚧 规划中 |
+| **Angular** | ✅ 支持 | AOT 编译 | Ivy 指令 | ✅ 已实现 |
 
 ---
 
