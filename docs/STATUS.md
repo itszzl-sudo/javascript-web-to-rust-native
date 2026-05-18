@@ -17,7 +17,7 @@
 | cranelift-compiler | ✅ 100% | - | Cranelift 原生编译器封装 |
 | binding-generator | ✅ 100% | - | 过程宏绑定生成器 |
 | director | ✅ 100% | - | CLI 编排工具 |
-| jrust-servo | ✅ 100% | - | Servo 浏览器集成 |
+| jrust-servo | ❌ 已移除 | - | 被 jrust-browser 替代 |
 | jrust-browser | ✅ 100% | 3 passed | rust-browser 集成（网络请求、事件、表单） |
 
 ### 框架支持 (全部完成 ✅)
@@ -179,11 +179,11 @@ Vue 项目 → Vite 打包 → jrust-translator → Rust → jrust-runtime → r
 
 ### P2 - 低优先级
 
-| 任务 | 说明 | 预计时间 |
-|------|------|---------|
-| jrust-servo 清理 | 移除不再使用的 servo 代码 | 2 天 |
-| React 支持 | JSX 转换 | 2 周 |
-| Angular 支持 | AOT 编译适配 | 3 周 |
+| 任务 | 说明 | 状态 |
+|------|------|------|
+| jrust-servo 清理 | 移除不再使用 | ✅ 已完成 |
+| React 完善 | Hooks 系统 | ✅ 已完成 |
+| Angular 完善 | Ivy 指令 | ✅ 已完成 |
 
 ---
 
