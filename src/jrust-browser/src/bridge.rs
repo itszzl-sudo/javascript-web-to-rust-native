@@ -253,6 +253,21 @@ impl BrowserInstance {
     pub fn read_file(&mut self, path: &str) -> Result<Vec<u8>, String> {
         self.bridge.read_file(path)
     }
+
+    // ── window.open 监听 ──
+
+    /// Bind window.open handler
+    pub fn on_window_open<F>(&mut self, handler: F)
+    where
+        F: FnMut(&str) -> bool + Send + 'static,
+    {
+        self.bridge.on_window_open(Box::new(handler));
+    }
+
+    /// Handle window.open call (returns whether handled)
+    pub fn handle_window_open(&mut self, url: &str) -> bool {
+        self.bridge.handle_window_open(url)
+    }
 }
 
 /// Browser events for jrust-browser event handling
