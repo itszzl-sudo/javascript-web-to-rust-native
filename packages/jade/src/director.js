@@ -208,13 +208,24 @@ class Director {
   }
 
   /**
-   * 生成组件 UI
+   * 生成组件 UI（支持嵌套）
    */
   generateComponentUI(lines, funcName) {
     const varName = funcName.toLowerCase();
     
     lines.push('                ui.group(|ui| {');
     lines.push(`                    ui.label("${funcName} Component");`);
+    
+    // 生命周期钩子
+    lines.push('                    ui.indent("lifecycle", |ui| {');
+    lines.push('                        ui.small("Lifecycle:");');
+    lines.push('                        ui.indent("hooks", |ui| {');
+    lines.push('                            ui.small("✓ onMounted");');
+    lines.push('                            ui.small("✓ onUpdated");');
+    lines.push('                            ui.small("✓ onUnmounted");');
+    lines.push('                        });');
+    lines.push('                    });');
+    lines.push('                    ');
     
     // 根据组件类型生成不同的 UI
     if (funcName === 'Counter') {
@@ -251,6 +262,44 @@ class Director {
       lines.push('                        let id = state.len();');
       lines.push('                        state.insert(format!("todo_{}", id), "New task".to_string());');
       lines.push('                    }');
+    } else if (funcName === 'Form') {
+      // 嵌套组件：表单包含子组件
+      lines.push('                    ui.label("Children:");');
+      lines.push('                    ui.indent("children", |ui| {');
+      lines.push('                        ui.small("→ Input (name)");');
+      lines.push('                        ui.small("→ Input (email)");');
+      lines.push('                        ui.small("→ Button (submit)");');
+      lines.push('                    });');
+      lines.push('                    ');
+      lines.push('                    ui.horizontal(|ui| {');
+      lines.push('                        ui.text_edit_singleline(&mut String::new());');
+      lines.push('                        if ui.button("Submit").clicked() {');
+      lines.push('                            println!("Form submitted!");');
+      lines.push('                        }');
+      lines.push('                    });');
+    } else if (funcName === 'App') {
+      // 顶层组件：显示嵌套结构
+      lines.push('                    ui.label("Root component");');
+      lines.push('                    ui.indent("tree", |ui| {');
+      lines.push('                        ui.small("App");');
+      lines.push('                        ui.indent("app_children", |ui| {');
+      lines.push('                            ui.small("└─ Form");');
+      lines.push('                            ui.indent("form_children", |ui| {');
+      lines.push('                                ui.small("├─ Input (name)");');
+      lines.push('                                ui.small("├─ Input (email)");');
+      lines.push('                                ui.small("└─ Button (submit)");');
+      lines.push('                            });');
+      lines.push('                        });');
+      lines.push('                    });');
+    } else if (funcName === 'Button') {
+      lines.push('                    if ui.button("Button").clicked() {');
+      lines.push('                        println!("Button clicked!");');
+      lines.push('                    }');
+    } else if (funcName === 'Input') {
+      lines.push('                    ui.horizontal(|ui| {');
+      lines.push('                        ui.label("Input:");');
+      lines.push('                        ui.text_edit_singleline(&mut String::new());');
+      lines.push('                    });');
     } else {
       lines.push('                    ui.label("Component loaded");');
     }
