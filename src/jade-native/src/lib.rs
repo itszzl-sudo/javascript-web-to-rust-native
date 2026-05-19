@@ -113,6 +113,59 @@ impl JadeNative {
         let type_ = node.get("type").and_then(|t| t.as_str()).unwrap_or("");
         
         match type_ {
+            // 异步函数声明
+            "AsyncFunctionDeclaration" => {
+                if let Some(func) = self.parse_function(node) {
+                    module.add_function(func);
+                    stats.supported_features.push("async-function".to_string());
+                }
+            }
+            
+            // Try-catch 语句
+            "TryStatement" => {
+                stats.supported_features.push("try-catch".to_string());
+            }
+            
+            // Throw 语句
+            "ThrowStatement" => {
+                stats.supported_features.push("throw".to_string());
+            }
+            
+            // Switch 语句
+            "SwitchStatement" => {
+                stats.supported_features.push("switch".to_string());
+            }
+            
+            // 数组表达式
+            "ArrayExpression" => {
+                stats.supported_features.push("array".to_string());
+            }
+            
+            // 对象表达式
+            "ObjectExpression" => {
+                stats.supported_features.push("object".to_string());
+            }
+            
+            // 箭头函数
+            "ArrowFunctionExpression" => {
+                stats.supported_features.push("arrow-function".to_string());
+            }
+            
+            // 模板字符串
+            "TemplateLiteral" => {
+                stats.supported_features.push("template-literal".to_string());
+            }
+            
+            // Spread 元素
+            "SpreadElement" => {
+                stats.supported_features.push("spread".to_string());
+            }
+            
+            // 解构赋值
+            "ObjectPattern" | "ArrayPattern" => {
+                stats.supported_features.push("destructuring".to_string());
+            }
+            
             // 函数声明
             "FunctionDeclaration" => {
                 if let Some(func) = self.parse_function(node) {
