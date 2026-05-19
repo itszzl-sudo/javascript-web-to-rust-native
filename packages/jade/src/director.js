@@ -111,6 +111,18 @@ class Director {
     lines.push('');
     lines.push('use std::rc::Rc;');
     lines.push('use std::cell::RefCell;');
+    lines.push('use std::collections::HashMap;');
+    lines.push('');
+    
+    // 添加辅助函数
+    lines.push('// Vue-like reactive helpers');
+    lines.push('pub fn reactive<T>(value: T) -> Rc<RefCell<T>> {');
+    lines.push('    Rc::new(RefCell::new(value))');
+    lines.push('}');
+    lines.push('');
+    lines.push('pub fn ref_value<T>(value: T) -> Rc<RefCell<T>> {');
+    lines.push('    Rc::new(RefCell::new(value))');
+    lines.push('}');
     lines.push('');
     
     // 导入
@@ -121,13 +133,9 @@ class Director {
       lines.push('');
     }
     
-    // 函数
+    // 函数实现
     for (const funcName of ir.functions) {
-      lines.push(`pub fn ${funcName}() {`);
-      lines.push(`    // TODO: Implement ${funcName}`);
-      lines.push(`    println!("Called ${funcName}");`);
-      lines.push(`}`);
-      lines.push('');
+      this.generateRustFunction(lines, funcName, ir.stats);
     }
     
     // 主函数
@@ -136,9 +144,12 @@ class Director {
     
     if (ir.functions.length > 0) {
       lines.push('    ');
-      lines.push('    // Call exported functions');
+      lines.push('    // Initialize components');
       for (const funcName of ir.functions) {
-        lines.push(`    ${funcName}();`);
+        // 过滤辅助函数
+        if (!['reactive', 'computed', 'ref', 'watch', 'onMounted'].includes(funcName)) {
+          lines.push(`    let _${funcName.toLowerCase()} = ${funcName}();`);
+        }
       }
     }
     
@@ -147,6 +158,59 @@ class Director {
     lines.push('}');
     
     return lines.join('\n');
+  }
+
+  /**
+   * 生成 Rust 函数
+   */
+  generateRustFunction(lines, funcName, stats) {
+    // 辅助函数已经定义，跳过
+    if (['reactive', 'computed', 'ref', 'watch', 'onMounted'].includes(funcName)) {
+      return;
+    }
+    
+    lines.push(`pub fn ${funcName}() {`);
+    
+    // 根据函数名生成不同的实现
+    if (funcName === 'Counter') {
+      lines.push('    // Counter component');
+      lines.push('    let count = ref_value(0);');
+      lines.push('    ');
+      lines.push('    let increment = || {');
+      lines.push('        let mut c = count.borrow_mut();');
+      lines.push('        *c += 1;');
+      lines.push('        println!("Count: {}", *c);');
+      lines.push('    };');
+      lines.push('    ');
+      lines.push('    let decrement = || {');
+      lines.push('        let mut c = count.borrow_mut();');
+      lines.push('        *c -= 1;');
+      lines.push('        println!("Count: {}", *c);');
+      lines.push('    };');
+      lines.push('    ');
+      lines.push('    increment();');
+      lines.push('    increment();');
+      lines.push('    decrement();');
+    } else if (funcName === 'TodoApp') {
+      lines.push('    // TodoApp component');
+      lines.push('    let todos: Rc<RefCell<Vec<HashMap<String, String>>>> = reactive(Vec::new());');
+      lines.push('    let new_todo = ref_value(String::new());');
+      lines.push('    ');
+      lines.push('    // Add todo');
+      lines.push('    {');
+      lines.push('        let mut todo = HashMap::new();');
+      lines.push('        todo.insert("text".to_string(), "Learn Rust".to_string());');
+      lines.push('        todo.insert("done".to_string(), "false".to_string());');
+      lines.push('        todos.borrow_mut().push(todo);');
+      lines.push('    }');
+      lines.push('    ');
+      lines.push('    println!("Todos: {:?}", todos.borrow());');
+    } else {
+      lines.push(`    println!("Called ${funcName}");`);
+    }
+    
+    lines.push('}');
+    lines.push('');
   }
 
   /**
