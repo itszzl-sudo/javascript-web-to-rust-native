@@ -1,54 +1,62 @@
 #!/usr/bin/env node
 
-const { execSync } = require('child_process');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
+const { Director } = require('../src/director');
 
-// 获取平台对应的二进制文件
-function getBinary() {
-  const platform = process.platform;
-  const arch = process.arch;
-  
-  const binaryName = {
-    win32: { x64: 'director.exe', ia32: 'director.exe' },
-    darwin: { x64: 'director', arm64: 'director' },
-    linux: { x64: 'director', arm64: 'director' }
-  }[platform]?.[arch];
-  
-  if (!binaryName) {
-    console.error(`Unsupported platform: ${platform}-${arch}`);
-    process.exit(1);
-  }
-  
-  return path.join(__dirname, '..', 'binaries', platform, arch, binaryName);
-}
-
-// 主入口
-function main() {
+async function main() {
   const args = process.argv.slice(2);
   
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
     printHelp();
     return;
   }
-  
-  const binary = getBinary();
-  
-  if (!fs.existsSync(binary)) {
-    console.error(`Binary not found: ${binary}`);
-    console.error('Please run "npm install" to download the binary');
+
+  // 解析参数
+  let inputFile = null;
+  let outputName = 'app';
+  let embed = false;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    
+    if (arg === '--input' || arg === '-i') {
+      inputFile = args[++i];
+    } else if (arg === '--name' || arg === '-n') {
+      outputName = args[++i];
+    } else if (arg === '--embed' || arg === '-e') {
+      embed = true;
+    } else if (!arg.startsWith('-')) {
+      inputFile = arg;
+    }
+  }
+
+  if (!inputFile) {
+    console.error('❌ No input file specified');
+    console.error('Usage: jade <input.js> [options]');
     process.exit(1);
   }
+
+  // 读取 JS 文件
+  const jsCode = fs.readFileSync(inputFile, 'utf-8');
+  console.log(`Input: ${inputFile} (${jsCode.length} bytes)\n`);
+
+  // 编译
+  const director = new Director();
   
   try {
-    execSync(`"${binary}" ${args.join(' ')}`, {
-      stdio: 'inherit',
-      env: { ...process.env }
+    const outputPath = await director.compile(jsCode, {
+      outputName,
+      embed
     });
+    
+    console.log(`\n✅ Success!`);
+    console.log(`Output: ${outputPath}`);
+    
   } catch (error) {
-    if (error.status !== 0) {
-      process.exit(error.status);
-    }
+    console.error(`\n❌ Compilation failed:`);
+    console.error(error.message);
+    process.exit(1);
   }
 }
 
@@ -58,29 +66,20 @@ function printHelp() {
 
 Usage:
   jade <input.js> [options]
-  jade build <input.js> [options]
   jade --help
 
-Commands:
-  build    Compile JavaScript to native executable (default)
-
 Options:
-  -o, --output <path>    Output directory (default: dist)
-  -n, --name <name>      Output name (default: app)
-  -e, --embed            Embed mode (generate library, no window)
-  -h, --help             Show this help
+  -i, --input <file>    Input JavaScript file
+  -n, --name <name>     Output name (default: app)
+  -e, --embed           Embed mode (library, no window)
+  -h, --help            Show this help
 
 Examples:
-  # Compile Vue app to native executable
-  jade build dist/assets/index.js -o ./output -n my-app
+  jade dist/assets/index.js -n my-app
+  jade input.js --embed -n my-lib
 
-  # Generate embed library (for embedding in other programs)
-  jade build dist/assets/index.js --embed -n my-lib
-
-  # Quick compile
-  jade dist/assets/index.js
-
-For more information: https://github.com/irisverse/javascript-web-to-rust-native
+No binary download required!
+Uses Cranelift WASM for compilation.
 `);
 }
 

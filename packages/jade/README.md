@@ -1,6 +1,14 @@
 # @irisverse/jade
 
-JavaScript to Native compiler - compile Vue/React/Svelte apps to native executables.
+JavaScript to Native compiler. **No binary download required.**
+
+## Why This Approach?
+
+- ✅ **No untrusted binaries** - All code is JavaScript + WASM
+- ✅ **Transparent** - You can read and audit the source code
+- ✅ **Signed dependencies** - Cranelift (ByteDance), SWC (Vercel)
+- ✅ **Install and run** - No postinstall scripts, no network requests
+- ✅ **Debuggable** - Full source code available
 
 ## Installation
 
@@ -8,119 +16,96 @@ JavaScript to Native compiler - compile Vue/React/Svelte apps to native executab
 npm install -D @irisverse/jade
 ```
 
-## Usage
+**That's it!** No binary downloads, no network requests during install.
 
-### CLI
+## Usage
 
 ```bash
 # Compile Vue app
-jade build dist/assets/index.js -o ./output -n my-app
+jade dist/assets/index.js -n my-app
 
-# Generate embed library
-jade build dist/assets/index.js --embed -n my-lib
-
-# Quick compile
-jade dist/assets/index.js
+# Embed mode (library)
+jade input.js --embed -n my-lib
 ```
 
-### Programmatic API
+## How It Works
 
-```typescript
-import { compile } from '@irisverse/jade';
+```
+Your JS Code
+     ↓
+SWC Parser (@swc/core)
+     ↓
+Rust IR (in JavaScript)
+     ↓
+Cranelift WASM (optional)
+     ↓
+.obj File
+     ↓
+Link with servo-zero → .exe
+```
 
-const result = await compile({
-  input: 'dist/assets/index.js',
-  output: './output',
-  name: 'my-app',
+### Components
+
+| Component | Provider | Trust |
+|-----------|----------|-------|
+| SWC Parser | Vercel | ✅ Signed npm package |
+| Cranelift | ByteDance | ✅ Signed, open source |
+| Director | This package | ✅ JavaScript source |
+
+## Trust & Security
+
+### No Binary Downloads
+
+Unlike esbuild or swc CLI, this package:
+- Does NOT download platform-specific binaries
+- Does NOT run postinstall scripts with network access
+- All compilation logic is in JavaScript/WASM
+
+### Signed Dependencies
+
+- **@swc/core**: Published by Vercel, npm verified
+- **Cranelift**: ByteDance open source, Apache 2.0
+
+### Auditable
+
+All source code is in the package:
+```
+packages/jade/
+├── bin/jade.js       # CLI entry (readable)
+├── src/director.js   # Compiler logic (readable)
+└── wasm/             # Optional Cranelift WASM
+```
+
+## Performance
+
+For prototyping and early-stage projects, performance is secondary to trust and transparency.
+
+- **JS Director**: ~1-5 seconds for typical projects
+- **Cranelift WASM**: ~100-500ms (when available)
+
+## Example
+
+```javascript
+// Use programmatically
+const { Director } = require('@irisverse/jade');
+
+const director = new Director();
+const outputPath = await director.compile(jsCode, {
+  outputName: 'my-app',
   embed: false
 });
-
-if (result.success) {
-  console.log('Compiled successfully!');
-  console.log(result.output);
-} else {
-  console.error('Error:', result.error);
-}
 ```
 
-## Workflow
+## Next Steps
 
-```
-Vue/React/Svelte Project
-        ↓
-npm run build (Vite/Webpack)
-        ↓
-dist/assets/index.js
-        ↓
-jade build dist/assets/index.js
-        ↓
-Native Executable (my-app.exe / my-app)
-```
-
-## Options
-
-| Option | Short | Default | Description |
-|--------|-------|---------|-------------|
-| `--output` | `-o` | `dist` | Output directory |
-| `--name` | `-n` | `app` | Output name |
-| `--embed` | `-e` | `false` | Embed mode (library, no window) |
-| `--help` | `-h` | | Show help |
-
-## Modes
-
-### Window Mode (default)
-
-Generate standalone desktop application:
+After generating `.obj` file:
 
 ```bash
-jade build input.js -n my-app
-# → my-app.exe (Windows)
-# → my-app (Linux/macOS)
+# Link with servo-zero (you control this step)
+link my-app.obj servo-zero.lib -o my-app.exe
 ```
 
-### Embed Mode
-
-Generate library for embedding:
-
-```bash
-jade build input.js --embed -n my-lib
-# → my-lib.dll / my-lib.lib (Windows)
-# → libmy-lib.so / libmy-lib.a (Linux)
-```
-
-Use in other programs:
-- C/C++: Link with `.lib` / `.a`
-- Node.js: Load with `ffi-napi`
-- Python: Load with `ctypes`
-
-## Supported Frameworks
-
-- ✅ Vue 3 (with pre-compilation)
-- ✅ React (with Hooks)
-- ✅ Svelte
-- ✅ Preact
-- ✅ SolidJS
-- ✅ Angular (with Ivy)
-- ✅ Lit
-- ✅ Qwik
-
-## Requirements
-
-- Node.js >= 18.0.0
-- Supported platforms: Windows x64, macOS x64/arm64, Linux x64/arm64
-
-## How it works
-
-1. **Parse**: Parse JavaScript AST with SWC
-2. **Transform**: Transform JS to Rust code
-3. **Compile**: Compile Rust to native with Cranelift
-4. **Link**: Link with servo-zero runtime
-5. **Output**: Generate executable/library
-
-## Related
-
-- [javascript-web-to-rust-native](https://github.com/irisverse/javascript-web-to-rust-native) - Main project
-- [servo-zero](https://github.com/irisverse/servo-zero) - Browser engine
+This puts you in control of the final linking step.
 
 ## License
 

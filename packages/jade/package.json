@@ -1,15 +1,15 @@
 {
   "name": "@irisverse/jade",
   "version": "0.1.0",
-  "description": "JavaScript to Native compiler - compile Vue/React/Svelte apps to native executables",
+  "description": "JavaScript to Native compiler - No binary download required",
   "keywords": [
     "compiler",
     "native",
+    "cranelift",
     "rust",
     "vue",
     "react",
-    "svelte",
-    "wasm"
+    "svelte"
   ],
   "author": "IrisVerse",
   "license": "MIT",
@@ -24,13 +24,18 @@
   "types": "./dist/index.d.ts",
   "files": [
     "bin/",
+    "src/",
     "dist/",
+    "wasm/",
     "README.md"
   ],
   "scripts": {
-    "postinstall": "node scripts/download-binary.js",
     "build": "tsc",
-    "prepublishOnly": "npm run build"
+    "build:wasm": "cd ../.. && cargo build --release -p cranelift-compiler --target wasm32-unknown-unknown",
+    "test": "node bin/jade.js --help"
+  },
+  "dependencies": {
+    "@swc/core": "^1.3.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
@@ -38,10 +43,5 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "os": [
-    "win32",
-    "darwin",
-    "linux"
-  ]
+  }
 }
