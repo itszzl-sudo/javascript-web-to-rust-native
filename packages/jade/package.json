@@ -9,7 +9,9 @@
     "rust",
     "vue",
     "react",
-    "svelte"
+    "svelte",
+    "wasm",
+    "codegen"
   ],
   "author": "IrisVerse",
   "license": "MIT",
@@ -17,10 +19,14 @@
     "type": "git",
     "url": "https://github.com/irisverse/javascript-web-to-rust-native"
   },
+  "homepage": "https://github.com/irisverse/javascript-web-to-rust-native#readme",
+  "bugs": {
+    "url": "https://github.com/irisverse/javascript-web-to-rust-native/issues"
+  },
   "bin": {
     "jade": "./bin/jade.js"
   },
-  "main": "./dist/index.js",
+  "main": "./src/director.js",
   "types": "./dist/index.d.ts",
   "files": [
     "bin/",
@@ -28,12 +34,13 @@
     "dist/",
     "native/",
     "toolchain/",
-    "scripts/",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
     "build:native": "cargo build --release -p jade-native && node scripts/copy-native.js",
+    "prepublishOnly": "npm run build && npm run test",
     "test": "node bin/jade.js --help",
     "test:compile": "node bin/jade.js examples/simple.js -n test-app"
   },

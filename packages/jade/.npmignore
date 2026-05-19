@@ -1,0 +1,43 @@
+# 源码
+src/
+examples/
+scripts/
+
+# 开发文件
+*.ts
+!dist/*.d.ts
+tsconfig.json
+.node_modules/
+
+# 测试文件
+test/
+*.test.js
+*.spec.js
+
+# 临时文件
+*.obj
+*.exe
+*.dll
+*.lib
+*.pdb
+__temp__*
+
+# Git
+.git/
+.gitignore
+
+# 文档
+docs/
+*.md
+!README.md
+!LICENSE
+
+# CI
+.github/
+.travis.yml
+.circleci/
+
+# 其他
+.DS_Store
+Thumbs.db
+*.log
