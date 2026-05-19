@@ -18,7 +18,7 @@
 | binding-generator | ✅ 100% | - | 过程宏绑定生成器 |
 | director | ✅ 100% | - | CLI 编排工具 |
 | jrust-servo | ❌ 已移除 | - | 被 jrust-browser 替代 |
-| jrust-browser | ✅ 100% | 3 passed | rust-browser 集成（网络请求、事件、表单） |
+| jrust-browser | ✅ 100% | 3 passed | servo-zero 集成（embed 模式） |
 
 ### 框架支持 (全部完成 ✅)
 
