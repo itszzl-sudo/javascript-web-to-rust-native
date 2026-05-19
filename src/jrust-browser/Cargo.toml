@@ -2,10 +2,10 @@
 name = "jrust-browser"
 version = "0.1.0"
 edition = "2021"
-description = "JRust + rust-browser integration bridge"
+description = "JRust + servo-zero integration bridge"
 
 [dependencies]
-rust-browser = { path = "C:/Users/a/Documents/codebuddy-projects/rust-browser/rust-browser", default-features = false, features = ["embed"] }
+servo-bridge = { path = "C:/Users/a/Documents/codebuddy-projects/servo-without-spidermonkey/servo-zero/bridge" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"

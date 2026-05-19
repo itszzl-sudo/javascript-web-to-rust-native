@@ -1,10 +1,10 @@
 
-//! Browser Bridge - Integration with rust-browser
+//! Browser Bridge - Integration with servo-zero
 //! 
-//! This module provides a high-level interface to rust-browser's DefaultWebNativeBridge
+//! This module provides a high-level interface to servo-zero's ServoBridge
 
-use rust_browser::bridge_impl::DefaultWebNativeBridge;
-use rust_browser::bridge::WebNativeBridge;
+use servo_bridge::ServoBridge;
+use servo_bridge::WebNativeBridge;
 use serde::{Serialize, Deserialize};
 
 /// Browser configuration
@@ -59,9 +59,9 @@ impl BrowserConfig {
     }
 }
 
-/// Browser instance wrapping DefaultWebNativeBridge
+/// Browser instance wrapping ServoBridge
 pub struct BrowserInstance {
-    bridge: DefaultWebNativeBridge,
+    bridge: ServoBridge,
     config: BrowserConfig,
 }
 
@@ -223,7 +223,7 @@ impl BrowserInstance {
             status: r.status,
             headers: r.headers,
             body: r.body,
-            final_url: r.final_url,
+            final_url: r.url,
         })
     }
 
@@ -233,7 +233,7 @@ impl BrowserInstance {
             status: r.status,
             headers: r.headers,
             body: r.body,
-            final_url: r.final_url,
+            final_url: r.url,
         })
     }
 
