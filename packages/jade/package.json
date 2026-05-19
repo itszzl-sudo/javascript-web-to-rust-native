@@ -1,0 +1,46 @@
+{
+  "name": "@irisverse/jade",
+  "version": "0.1.0",
+  "description": "JavaScript to Native compiler - compile Vue/React/Svelte apps to native executables",
+  "keywords": [
+    "compiler",
+    "native",
+    "rust",
+    "vue",
+    "react",
+    "svelte",
+    "wasm"
+  ],
+  "author": "IrisVerse",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/irisverse/javascript-web-to-rust-native"
+  },
+  "bin": {
+    "jade": "./bin/jade.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "bin/",
+    "dist/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "os": [
+    "win32",
+    "darwin",
+    "linux"
+  ]
+}
