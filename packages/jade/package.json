@@ -26,13 +26,16 @@
     "bin/",
     "src/",
     "dist/",
-    "wasm/",
+    "native/",
+    "toolchain/",
+    "scripts/",
     "README.md"
   ],
   "scripts": {
     "build": "tsc",
-    "build:wasm": "cd ../.. && cargo build --release -p cranelift-compiler --target wasm32-unknown-unknown",
-    "test": "node bin/jade.js --help"
+    "build:native": "cargo build --release -p jade-native && node scripts/copy-native.js",
+    "test": "node bin/jade.js --help",
+    "test:compile": "node bin/jade.js examples/simple.js -n test-app"
   },
   "dependencies": {
     "@swc/core": "^1.3.0"

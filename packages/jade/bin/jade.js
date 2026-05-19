@@ -12,7 +12,19 @@ async function main() {
     return;
   }
 
-  // 解析参数
+  const command = args[0];
+  
+  if (command === 'link') {
+    await handleLink(args.slice(1));
+    return;
+  }
+  
+  if (command === 'pack') {
+    await handlePack(args.slice(1));
+    return;
+  }
+
+  // 编译模式
   let inputFile = null;
   let outputName = 'app';
   let embed = false;
@@ -60,26 +72,108 @@ async function main() {
   }
 }
 
+async function handleLink(args) {
+  let objPath = null;
+  let libPath = null;
+  let outputPath = 'app.exe';
+  
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    
+    if (arg === '-o' || arg === '--output') {
+      outputPath = args[++i];
+    } else if (arg === '-l' || arg === '--lib') {
+      libPath = args[++i];
+    } else if (!arg.startsWith('-')) {
+      if (!objPath) {
+        objPath = arg;
+      } else if (!libPath) {
+        libPath = arg;
+      }
+    }
+  }
+  
+  if (!objPath) {
+    console.error('❌ No object file specified');
+    console.error('Usage: jade link <obj> [lib] -o <output>');
+    process.exit(1);
+  }
+  
+  const director = new Director();
+  
+  try {
+    const result = await director.link(objPath, libPath || '', outputPath);
+    console.log(`\n✅ Success!`);
+    console.log(`Output: ${result}`);
+  } catch (error) {
+    console.error(`\n❌ Link failed:`);
+    console.error(error.message);
+    process.exit(1);
+  }
+}
+
+async function handlePack(args) {
+  let objPath = null;
+  let libName = 'mylib';
+  
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    
+    if (arg === '-n' || arg === '--name') {
+      libName = args[++i];
+    } else if (!arg.startsWith('-')) {
+      objPath = arg;
+    }
+  }
+  
+  if (!objPath) {
+    console.error('❌ No object file specified');
+    console.error('Usage: jade pack <obj> -n <name>');
+    process.exit(1);
+  }
+  
+  const director = new Director();
+  
+  try {
+    const result = await director.packLib(objPath, libName);
+    console.log(`\n✅ Success!`);
+    console.log(`Output: ${result}`);
+  } catch (error) {
+    console.error(`\n❌ Pack failed:`);
+    console.error(error.message);
+    process.exit(1);
+  }
+}
+
 function printHelp() {
   console.log(`
 @irisverse/jade - JavaScript to Native compiler
 
 Usage:
-  jade <input.js> [options]
-  jade --help
+  jade <input.js> [options]    Compile JS to .obj
+  jade link <obj> [lib] -o <output>   Link .obj to .exe
+  jade pack <obj> -n <name>    Pack .obj to .lib/.a
+  jade --help                  Show this help
 
-Options:
+Compile Options:
   -i, --input <file>    Input JavaScript file
   -n, --name <name>     Output name (default: app)
   -e, --embed           Embed mode (library, no window)
-  -h, --help            Show this help
+
+Link Options:
+  -o, --output <file>   Output executable
+  -l, --lib <file>      Library to link
+
+Pack Options:
+  -n, --name <name>     Library name
 
 Examples:
   jade dist/assets/index.js -n my-app
-  jade input.js --embed -n my-lib
+  jade link my-app.obj servo-zero.lib -o my-app.exe
+  jade pack my-app.obj -n mylib
 
 No binary download required!
-Uses Cranelift WASM for compilation.
+Uses Cranelift for code generation.
 `);
 }
 

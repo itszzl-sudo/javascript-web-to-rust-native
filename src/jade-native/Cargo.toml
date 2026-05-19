@@ -1,0 +1,21 @@
+[package]
+name = "jade-native"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "2", features = ["async", "serde-json"] }
+napi-derive = "2"
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+cranelift-compiler = { path = "../cranelift-compiler" }
+
+[build-dependencies]
+napi-build = "2"
+
+[profile.release]
+lto = true

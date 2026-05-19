@@ -8,6 +8,7 @@ members = [
     "src/vue-demo",
     "src/binding-generator",
     "src/cranelift-compiler",
+    "src/jade-native",
 ]
 
 [workspace.package]
