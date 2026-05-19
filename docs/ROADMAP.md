@@ -78,6 +78,33 @@
 
 - ✅ 8 个主流框架支持
 - ✅ 54 框架绑定测试通过
+
+### v0.4.0 (已完成 - 2026-05-20)
+
+- ✅ jade 编译器完整实现
+- ✅ Director (JS) 调度器
+- ✅ IR Generator (Rust) - 支持 15+ JS 语法
+- ✅ Code Generator (Cranelift)
+- ✅ MSVC 工具链集成 (8.1 MB)
+- ✅ .NET Framework 4.0-4.8 检测
+- ✅ npm 包 @irisverse/jade v0.1.0
+- ✅ Vue 组件编译测试通过
+
+---
+
+## 未来计划
+
+### v0.5.0 (计划中)
+
+- ⏳ 完整事件系统对接
+- ⏳ DOM 渲染集成
+- ⏳ 更多 JS 语法支持 (async/await, try-catch)
+
+### v0.6.0 (计划中)
+
+- ⏳ iOS 支持
+- ⏳ Android 支持
+- ⏳ 跨平台工具链
 - ✅ 核心 API 扩展完成
 
 ### v0.4.0 (已完成)
