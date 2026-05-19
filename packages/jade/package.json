@@ -28,6 +28,7 @@
     "README.md"
   ],
   "scripts": {
+    "postinstall": "node scripts/download-binary.js",
     "build": "tsc",
     "prepublishOnly": "npm run build"
   },
