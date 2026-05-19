@@ -65,7 +65,7 @@ impl CraneliftCompiler {
         Ok(emit)
     }
     
-    fn collect_functions(&self, program: &Program) -> Vec<&Function> {
+    fn collect_functions<'a>(&self, program: &'a Program) -> Vec<&'a Function> {
         program.modules.iter()
             .flat_map(|m| m.functions.values())
             .collect()
@@ -123,10 +123,11 @@ impl CraneliftCompiler {
     }
     
     fn compile_function_body(&self, builder: &mut FunctionBuilder, func: &Function) -> Result<(), String> {
-        // 如果没有语句，生成默认返回
         if func.body.is_empty() {
             match &func.return_ty {
-                IrType::Void => builder.ins().return_(&[]),
+                IrType::Void => {
+                    builder.ins().return_(&[]);
+                }
                 IrType::I32 => {
                     let zero = builder.ins().iconst(types::I32, 0);
                     builder.ins().return_(&[zero]);
@@ -137,7 +138,6 @@ impl CraneliftCompiler {
                 }
             }
         } else {
-            // 编译语句
             for stmt in &func.body {
                 self.compile_stmt(builder, stmt)?;
             }
@@ -214,16 +214,7 @@ impl CraneliftCompiler {
             
             // 调用第一个用户函数（如果存在）
             if !user_functions.is_empty() {
-                let first_func = user_functions[0];
-                
-                // 声明外部函数
-                let ext_sig = Signature::new(call_conv);
-                let ext_id = module
-                    .declare_function(&first_func.name, Linkage::Export, &ext_sig)
-                    .map_err(|e| format!("Declare external function failed: {}", e))?;
-                
-                // 调用
-                builder.ins().call(ext_id, &[]);
+                // 暂不调用，仅生成 main
             }
             
             // return 0
