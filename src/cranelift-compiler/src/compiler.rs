@@ -23,7 +23,7 @@ impl CraneliftCompiler {
         Ok(Self { target: triple })
     }
     
-    pub fn compile(&self, _program: &Program) -> Result<Vec<u8>, String> {
+    pub fn compile(&self, program: &Program) -> Result<Vec<u8>, String> {
         println!("=== Cranelift 编译开始 ===");
         println!("目标平台: {}", self.target);
         
@@ -44,12 +44,57 @@ impl CraneliftCompiler {
         
         let mut module = ObjectModule::new(builder);
         
-        let mut sig = Signature::new(CallConv::SystemV);
-        sig.returns.push(AbiParam::new(types::I32));
+        // 收集所有用户函数
+        let user_functions = self.collect_functions(program);
+        
+        // 生成用户函数
+        for func in &user_functions {
+            self.compile_function(&mut module, func)?;
+        }
+        
+        // 生成 main 入口函数
+        self.compile_main_entry(&mut module, &user_functions)?;
+        
+        let product = module.finish();
+        let emit = product
+            .emit()
+            .map_err(|e| format!("Emit failed: {}", e))?;
+        
+        println!("✅ 编译完成，生成 {} 字节目标文件", emit.len());
+        println!("   用户函数: {}", user_functions.len());
+        Ok(emit)
+    }
+    
+    fn collect_functions(&self, program: &Program) -> Vec<&Function> {
+        program.modules.iter()
+            .flat_map(|m| m.functions.values())
+            .collect()
+    }
+    
+    fn compile_function(&self, module: &mut ObjectModule, func: &Function) -> Result<(), String> {
+        let is_windows = self.target.to_string().contains("windows");
+        let call_conv = if is_windows { CallConv::WindowsFastcall } else { CallConv::SystemV };
+        
+        let mut sig = Signature::new(call_conv);
+        
+        // 参数
+        for _ in &func.params {
+            sig.params.push(AbiParam::new(types::I64));
+        }
+        
+        // 返回值
+        match &func.return_ty {
+            IrType::Void => {}
+            IrType::I32 => sig.returns.push(AbiParam::new(types::I32)),
+            IrType::I64 => sig.returns.push(AbiParam::new(types::I64)),
+            IrType::F32 => sig.returns.push(AbiParam::new(types::F32)),
+            IrType::F64 => sig.returns.push(AbiParam::new(types::F64)),
+            _ => sig.returns.push(AbiParam::new(types::I64)),
+        }
         
         let func_id = module
-            .declare_function("app_main", Linkage::Export, &sig)
-            .map_err(|e| format!("Declare function failed: {}", e))?;
+            .declare_function(&func.name, Linkage::Export, &sig)
+            .map_err(|e| format!("Declare function {} failed: {}", func.name, e))?;
         
         let mut ctx = module.make_context();
         ctx.func.signature = sig;
@@ -58,11 +103,130 @@ impl CraneliftCompiler {
             let mut fc = FunctionBuilderContext::new();
             let mut builder = FunctionBuilder::new(&mut ctx.func, &mut fc);
             
-            let block = builder.create_block();
-            builder.append_block_params_for_function_params(block);
-            builder.switch_to_block(block);
-            builder.seal_block(block);
+            let entry_block = builder.create_block();
+            builder.append_block_params_for_function_params(entry_block);
+            builder.switch_to_block(entry_block);
+            builder.seal_block(entry_block);
             
+            // 编译函数体
+            self.compile_function_body(&mut builder, func)?;
+            
+            builder.finalize();
+        }
+        
+        module
+            .define_function(func_id, &mut ctx)
+            .map_err(|e| format!("Define function {} failed: {}", func.name, e))?;
+        module.clear_context(&mut ctx);
+        
+        Ok(())
+    }
+    
+    fn compile_function_body(&self, builder: &mut FunctionBuilder, func: &Function) -> Result<(), String> {
+        // 如果没有语句，生成默认返回
+        if func.body.is_empty() {
+            match &func.return_ty {
+                IrType::Void => builder.ins().return_(&[]),
+                IrType::I32 => {
+                    let zero = builder.ins().iconst(types::I32, 0);
+                    builder.ins().return_(&[zero]);
+                }
+                _ => {
+                    let zero = builder.ins().iconst(types::I64, 0);
+                    builder.ins().return_(&[zero]);
+                }
+            }
+        } else {
+            // 编译语句
+            for stmt in &func.body {
+                self.compile_stmt(builder, stmt)?;
+            }
+        }
+        
+        Ok(())
+    }
+    
+    fn compile_stmt(&self, builder: &mut FunctionBuilder, stmt: &Stmt) -> Result<(), String> {
+        match stmt {
+            Stmt::Return(Some(expr)) => {
+                let val = self.compile_expr(builder, expr)?;
+                builder.ins().return_(&[val]);
+            }
+            Stmt::Return(None) => {
+                builder.ins().return_(&[]);
+            }
+            Stmt::ExprStmt(expr) => {
+                self.compile_expr(builder, expr)?;
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+    
+    fn compile_expr(&self, builder: &mut FunctionBuilder, expr: &Expr) -> Result<Value, String> {
+        match expr {
+            Expr::ConstI32(v) => Ok(builder.ins().iconst(types::I32, *v as i64)),
+            Expr::ConstI64(v) => Ok(builder.ins().iconst(types::I64, *v)),
+            Expr::ConstBool(v) => Ok(builder.ins().iconst(types::I8, if *v { 1 } else { 0 })),
+            Expr::BinaryOp { op, left, right } => {
+                let lhs = self.compile_expr(builder, left)?;
+                let rhs = self.compile_expr(builder, right)?;
+                
+                let result = match op {
+                    BinOp::Add => builder.ins().iadd(lhs, rhs),
+                    BinOp::Sub => builder.ins().isub(lhs, rhs),
+                    BinOp::Mul => builder.ins().imul(lhs, rhs),
+                    BinOp::And => builder.ins().band(lhs, rhs),
+                    BinOp::Or => builder.ins().bor(lhs, rhs),
+                    _ => builder.ins().iadd(lhs, rhs),
+                };
+                Ok(result)
+            }
+            _ => Ok(builder.ins().iconst(types::I64, 0))
+        }
+    }
+    
+    fn compile_main_entry(&self, module: &mut ObjectModule, user_functions: &[&Function]) -> Result<(), String> {
+        let is_windows = self.target.to_string().contains("windows");
+        let call_conv = if is_windows { CallConv::WindowsFastcall } else { CallConv::SystemV };
+        
+        // main(int argc, char** argv)
+        let mut sig = Signature::new(call_conv);
+        sig.params.push(AbiParam::new(types::I32)); // argc
+        sig.params.push(AbiParam::new(types::I64)); // argv
+        sig.returns.push(AbiParam::new(types::I32)); // return int
+        
+        let func_id = module
+            .declare_function("main", Linkage::Export, &sig)
+            .map_err(|e| format!("Declare main failed: {}", e))?;
+        
+        let mut ctx = module.make_context();
+        ctx.func.signature = sig;
+        
+        {
+            let mut fc = FunctionBuilderContext::new();
+            let mut builder = FunctionBuilder::new(&mut ctx.func, &mut fc);
+            
+            let entry_block = builder.create_block();
+            builder.append_block_params_for_function_params(entry_block);
+            builder.switch_to_block(entry_block);
+            builder.seal_block(entry_block);
+            
+            // 调用第一个用户函数（如果存在）
+            if !user_functions.is_empty() {
+                let first_func = user_functions[0];
+                
+                // 声明外部函数
+                let ext_sig = Signature::new(call_conv);
+                let ext_id = module
+                    .declare_function(&first_func.name, Linkage::Export, &ext_sig)
+                    .map_err(|e| format!("Declare external function failed: {}", e))?;
+                
+                // 调用
+                builder.ins().call(ext_id, &[]);
+            }
+            
+            // return 0
             let zero = builder.ins().iconst(types::I32, 0);
             builder.ins().return_(&[zero]);
             
@@ -71,16 +235,10 @@ impl CraneliftCompiler {
         
         module
             .define_function(func_id, &mut ctx)
-            .map_err(|e| format!("Define function failed: {}", e))?;
+            .map_err(|e| format!("Define main failed: {}", e))?;
         module.clear_context(&mut ctx);
         
-        let product = module.finish();
-        let emit = product
-            .emit()
-            .map_err(|e| format!("Emit failed: {}", e))?;
-        
-        println!("✅ 编译完成，生成 {} 字节目标文件", emit.len());
-        Ok(emit)
+        Ok(())
     }
     
     pub fn link_with_lib(&self, obj: &[u8], lib: &str, out: &str) -> Result<(), String> {
