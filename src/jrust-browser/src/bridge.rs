@@ -1,9 +1,9 @@
 
 //! Browser Bridge - Integration with servo-zero
 //! 
-//! This module provides a high-level interface to servo-zero's ServoBridge
+//! This module provides a high-level interface to servo-zero's RealServoBridge
 
-use servo_bridge::ServoBridge;
+use servo_bridge::RealServoBridge;
 use servo_bridge::WebNativeBridge;
 use serde::{Serialize, Deserialize};
 
@@ -59,9 +59,9 @@ impl BrowserConfig {
     }
 }
 
-/// Browser instance wrapping ServoBridge
+/// Browser instance wrapping RealServoBridge
 pub struct BrowserInstance {
-    bridge: ServoBridge,
+    bridge: RealServoBridge,
     config: BrowserConfig,
 }
 
