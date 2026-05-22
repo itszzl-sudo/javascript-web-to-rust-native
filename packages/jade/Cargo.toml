@@ -1,7 +1,0 @@
-[package]
-name = "my-vue-app"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-eframe = { version = "0.29", default-features = false, features = ["glow"] }

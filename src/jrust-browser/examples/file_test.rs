@@ -7,7 +7,8 @@ fn main() {
         width: 800,
         height: 600,
         title: "File Test".to_string(),
-        headless: true,
+        enable_js: false,
+        enable_gui: false,
     };
 
     let mut browser = BrowserInstance::new(config).expect("Failed to create browser");

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jade Demo - Complex UI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .counter-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .counter-value {
+            font-size: 4em;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            margin: 20px 0;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 15px 40px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .btn-increment {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+        }
+        
+        .btn-decrement {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+        }
+        
+        .btn-reset {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .todo-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 30px;
+        }
+        
+        .todo-section h2 {
+            color: #495057;
+            margin-bottom: 15px;
+        }
+        
+        .todo-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .todo-input-group input {
+            flex: 1;
+            padding: 12px;
+            font-size: 1em;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            transition: border-color 0.3s;
+        }
+        
+        .todo-input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .todo-list {
+            list-style: none;
+        }
+        
+        .todo-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+        }
+        
+        .todo-item:hover {
+            transform: translateX(5px);
+        }
+        
+        .todo-item.completed {
+            opacity: 0.6;
+            text-decoration: line-through;
+        }
+        
+        .todo-item input[type="checkbox"] {
+            margin-right: 15px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .todo-text {
+            flex: 1;
+            font-size: 1.1em;
+        }
+        
+        .todo-delete {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Jade Demo</h1>
+        
+        <!-- Counter Section -->
+        <div class="counter-card">
+            <h2 style="color: white; text-align: center;">计数器</h2>
+            <div class="counter-value" id="counter">0</div>
+            <div class="button-group">
+                <button class="btn-decrement" onclick="decrement()">− 减少</button>
+                <button class="btn-reset" onclick="reset()">↻ 重置</button>
+                <button class="btn-increment" onclick="increment()">+ 增加</button>
+            </div>
+        </div>
+        
+        <!-- Todo Section -->
+        <div class="todo-section">
+            <h2>Todo List</h2>
+            <div class="todo-input-group">
+                <input type="text" id="todoInput" placeholder="添加新任务..." onkeypress="handleKeyPress(event)">
+                <button class="btn-increment" onclick="addTodo()">添加</button>
+            </div>
+            <ul class="todo-list" id="todoList"></ul>
+        </div>
+        
+        <!-- Stats Section -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalTodos">0</div>
+                <div class="stat-label">总任务</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="completedTodos">0</div>
+                <div class="stat-label">已完成</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pendingTodos">0</div>
+                <div class="stat-label">待处理</div>
+            </div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
+        </div>
+    </div>
+    
+    <script>
+        // Counter State
+        let count = 0;
+        
+        function increment() {
+            count++;
+            updateCounter();
+        }
+        
+        function decrement() {
+            count--;
+            updateCounter();
+        }
+        
+        function reset() {
+            count = 0;
+            updateCounter();
+        }
+        
+        function updateCounter() {
+            document.getElementById('counter').textContent = count;
+        }
+        
+        // Todo State
+        let todos = [];
+        
+        function addTodo() {
+            const input = document.getElementById('todoInput');
+            const text = input.value.trim();
+            
+            if (text) {
+                todos.push({
+                    id: Date.now(),
+                    text: text,
+                    completed: false
+                });
+                input.value = '';
+                renderTodos();
+            }
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                addTodo();
+            }
+        }
+        
+        function toggleTodo(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                renderTodos();
+            }
+        }
+        
+        function deleteTodo(id) {
+            todos = todos.filter(t => t.id !== id);
+            renderTodos();
+        }
+        
+        function renderTodos() {
+            const list = document.getElementById('todoList');
+            list.innerHTML = '';
+            
+            todos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = 'todo-item' + (todo.completed ? ' completed' : '');
+                li.innerHTML = `
+                    <input type="checkbox" ${todo.completed ? 'checked' : ''} onchange="toggleTodo(${todo.id})">
+                    <span class="todo-text">${todo.text}</span>
+                    <button class="todo-delete" onclick="deleteTodo(${todo.id})">删除</button>
+                `;
+                list.appendChild(li);
+            });
+            
+            updateStats();
+        }
+        
+        function updateStats() {
+            const total = todos.length;
+            const completed = todos.filter(t => t.completed).length;
+            const pending = total - completed;
+            const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+            
+            document.getElementById('totalTodos').textContent = total;
+            document.getElementById('completedTodos').textContent = completed;
+            document.getElementById('pendingTodos').textContent = pending;
+            
+            const progressFill = document.getElementById('progressFill');
+            progressFill.style.width = progress + '%';
+            progressFill.textContent = progress + '%';
+        }
+        
+        // Initialize with some todos
+        todos = [
+            { id: 1, text: '学习 Jade 编译器', completed: true },
+            { id: 2, text: '支持更多 JavaScript 语法', completed: false },
+            { id: 3, text: '优化性能', completed: false },
+            { id: 4, text: '添加更多框架支持', completed: false }
+        ];
+        
+        renderTodos();
+        updateCounter();
+        
+        console.log('✅ Jade Demo 初始化完成');
+        console.log('📊 统计:', { count, todos: todos.length });
+    </script>
+</body>
+</html>

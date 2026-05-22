@@ -113,60 +113,54 @@ impl JadeNative {
         let type_ = node.get("type").and_then(|t| t.as_str()).unwrap_or("");
         
         match type_ {
-            // 异步函数声明
-            "AsyncFunctionDeclaration" => {
+            "AsyncFunctionDeclaration" | "AsyncFunctionExpression" => {
                 if let Some(func) = self.parse_function(node) {
                     module.add_function(func);
                     stats.supported_features.push("async-function".to_string());
                 }
             }
             
-            // Try-catch 语句
             "TryStatement" => {
+                self.parse_try_statement(node, module, stats);
                 stats.supported_features.push("try-catch".to_string());
             }
             
-            // Throw 语句
             "ThrowStatement" => {
                 stats.supported_features.push("throw".to_string());
             }
             
-            // Switch 语句
             "SwitchStatement" => {
+                self.parse_switch_statement(node, module, stats);
                 stats.supported_features.push("switch".to_string());
             }
             
-            // 数组表达式
             "ArrayExpression" => {
                 stats.supported_features.push("array".to_string());
             }
             
-            // 对象表达式
             "ObjectExpression" => {
                 stats.supported_features.push("object".to_string());
             }
             
-            // 箭头函数
             "ArrowFunctionExpression" => {
-                stats.supported_features.push("arrow-function".to_string());
+                if let Some(func) = self.parse_arrow_function(node, stats) {
+                    module.add_function(func);
+                    stats.supported_features.push("arrow-function".to_string());
+                }
             }
             
-            // 模板字符串
             "TemplateLiteral" => {
                 stats.supported_features.push("template-literal".to_string());
             }
             
-            // Spread 元素
             "SpreadElement" => {
                 stats.supported_features.push("spread".to_string());
             }
             
-            // 解构赋值
             "ObjectPattern" | "ArrayPattern" => {
                 stats.supported_features.push("destructuring".to_string());
             }
             
-            // 函数声明
             "FunctionDeclaration" => {
                 if let Some(func) = self.parse_function(node) {
                     module.add_function(func);
@@ -174,19 +168,26 @@ impl JadeNative {
                 }
             }
             
-            // 变量声明
+            "FunctionExpression" => {
+                if let Some(func) = self.parse_function(node) {
+                    module.add_function(func);
+                }
+            }
+            
             "VariableDeclaration" => {
                 self.parse_variable_declaration(node, module, stats);
                 stats.supported_features.push("variable".to_string());
             }
             
-            // 类声明
             "ClassDeclaration" => {
                 self.parse_class_declaration(node, module, stats);
                 stats.supported_features.push("class".to_string());
             }
             
-            // 导入声明
+            "ClassExpression" => {
+                self.parse_class_declaration(node, module, stats);
+            }
+            
             "ImportDeclaration" => {
                 if let Some(source) = node.get("source").and_then(|s| s.as_str()) {
                     module.imports.push(source.to_string());
@@ -194,7 +195,6 @@ impl JadeNative {
                 stats.supported_features.push("import".to_string());
             }
             
-            // 导出声明
             "ExportDeclaration" | "ExportNamedDeclaration" => {
                 if let Some(decl) = node.get("declaration") {
                     self.visit_ast(decl, module, stats);
@@ -206,7 +206,6 @@ impl JadeNative {
                 stats.supported_features.push("export".to_string());
             }
             
-            // 导出默认声明
             "ExportDefaultDeclaration" => {
                 if let Some(decl) = node.get("declaration") {
                     self.visit_ast(decl, module, stats);
@@ -214,7 +213,6 @@ impl JadeNative {
                 stats.supported_features.push("export-default".to_string());
             }
             
-            // 模块/程序入口
             "Module" | "Program" | "Script" => {
                 if let Some(body) = node.get("body").and_then(|b| b.as_array()) {
                     for child in body {
@@ -223,12 +221,71 @@ impl JadeNative {
                 }
             }
             
-            // 表达式语句
-            "ExpressionStatement" => {
-                // 表达式语句暂不生成函数，仅记录
+            "ExpressionStatement" => {}
+            
+            "DoWhileStatement" => {
+                stats.supported_features.push("do-while".to_string());
+            }
+            
+            "ForInStatement" => {
+                stats.supported_features.push("for-in".to_string());
+            }
+            
+            "ForOfStatement" => {
+                stats.supported_features.push("for-of".to_string());
+            }
+            
+            "LabeledStatement" => {
+                stats.supported_features.push("label".to_string());
+            }
+            
+            "WithStatement" => {
+                stats.supported_features.push("with".to_string());
+            }
+            
+            "DebuggerStatement" => {
+                stats.supported_features.push("debugger".to_string());
             }
             
             _ => {}
+        }
+    }
+    
+    fn parse_arrow_function(&self, node: &serde_json::Value, stats: &IrStats) -> Option<Function> {
+        let params = node.get("params")
+            .and_then(|p| p.as_array())
+            .map(|arr| self.extract_params(arr))
+            .unwrap_or_default();
+        
+        let body = if let Some(body_node) = node.get("body") {
+            if body_node.get("type").and_then(|t| t.as_str()) == Some("BlockStatement") {
+                self.parse_function_body(body_node).unwrap_or_default()
+            } else {
+                vec![Stmt::Return(self.parse_expression(body_node))]
+            }
+        } else {
+            vec![]
+        };
+        
+        let return_ty = self.infer_return_type(&body);
+        
+        Some(Function {
+            name: format!("arrow_{}", stats.total_functions),
+            params,
+            return_ty,
+            body,
+            is_pub: false,
+            is_extern: false,
+        })
+    }
+    
+    fn parse_try_statement(&self, node: &serde_json::Value, _module: &mut Module, stats: &mut IrStats) {
+        stats.total_functions += 1;
+    }
+    
+    fn parse_switch_statement(&self, node: &serde_json::Value, _module: &mut Module, stats: &mut IrStats) {
+        if let Some(cases) = node.get("cases").and_then(|c| c.as_array()) {
+            stats.total_functions += cases.len() as u32;
         }
     }
 
@@ -350,6 +407,96 @@ impl JadeNative {
                 Some(Stmt::While { cond, body })
             }
             
+            "DoWhileStatement" => {
+                let body = node.get("body")
+                    .and_then(|b| self.parse_statement(b))
+                    .map(|s| vec![s])
+                    .unwrap_or_default();
+                let cond = node.get("test").and_then(|t| self.parse_expression(t))?;
+                
+                Some(Stmt::Block(vec![
+                    Stmt::Block(body.clone()),
+                    Stmt::While { cond, body },
+                ]))
+            }
+            
+            "ForInStatement" | "ForOfStatement" => {
+                let body = node.get("body")
+                    .and_then(|b| self.parse_statement(b))
+                    .map(|s| vec![s])
+                    .unwrap_or_default();
+                
+                Some(Stmt::Block(body))
+            }
+            
+            "SwitchStatement" => {
+                let cases = node.get("cases")
+                    .and_then(|c| c.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|case| self.parse_statement(case))
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default();
+                
+                Some(Stmt::Block(cases))
+            }
+            
+            "SwitchCase" => {
+                let consequent = node.get("consequent")
+                    .and_then(|c| c.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|s| self.parse_statement(s))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                
+                Some(Stmt::Block(consequent))
+            }
+            
+            "TryStatement" => {
+                let block = node.get("block")
+                    .and_then(|b| self.parse_statement(b))
+                    .unwrap_or(Stmt::Block(vec![]));
+                
+                let handler = node.get("handler")
+                    .and_then(|h| self.parse_statement(h))
+                    .unwrap_or(Stmt::Block(vec![]));
+                
+                let finalizer = node.get("finalizer")
+                    .and_then(|f| self.parse_statement(f))
+                    .map(|s| vec![s]);
+                
+                Some(Stmt::Block(vec![block, handler]))
+            }
+            
+            "CatchClause" => {
+                let body = node.get("body")
+                    .and_then(|b| self.parse_statement(b))
+                    .unwrap_or(Stmt::Block(vec![]));
+                
+                Some(body)
+            }
+            
+            "ThrowStatement" => {
+                let _arg = node.get("argument").and_then(|a| self.parse_expression(a));
+                Some(Stmt::Return(None))
+            }
+            
+            "LabeledStatement" => {
+                node.get("body")
+                    .and_then(|b| self.parse_statement(b))
+            }
+            
+            "ContinueStatement" => {
+                Some(Stmt::Return(None))
+            }
+            
+            "BreakStatement" => {
+                Some(Stmt::Return(None))
+            }
+            
             "ForStatement" => {
                 let init = node.get("init")
                     .and_then(|i| self.parse_statement(i))
@@ -465,6 +612,8 @@ impl JadeNative {
                 let unary_op = match op {
                     "-" => UnaryOp::Neg,
                     "!" => UnaryOp::Not,
+                    "+" => UnaryOp::Neg,
+                    "~" => UnaryOp::Not,
                     _ => UnaryOp::Neg,
                 };
                 
@@ -472,6 +621,88 @@ impl JadeNative {
                     op: unary_op,
                     expr: Box::new(expr),
                 })
+            }
+            
+            "UpdateExpression" => {
+                let op = node.get("operator").and_then(|o| o.as_str()).unwrap_or("++");
+                let arg = node.get("argument").and_then(|a| self.parse_expression(a))?;
+                
+                let inc = match op {
+                    "++" => Expr::BinaryOp {
+                        op: BinOp::Add,
+                        left: Box::new(arg.clone()),
+                        right: Box::new(Expr::ConstI32(1)),
+                    },
+                    "--" => Expr::BinaryOp {
+                        op: BinOp::Sub,
+                        left: Box::new(arg.clone()),
+                        right: Box::new(Expr::ConstI32(1)),
+                    },
+                    _ => arg.clone(),
+                };
+                
+                Some(inc)
+            }
+            
+            "ConditionalExpression" => {
+                let cond = node.get("test").and_then(|t| self.parse_expression(t))?;
+                let then_expr = node.get("consequent").and_then(|c| self.parse_expression(c))?;
+                let else_expr = node.get("alternate").and_then(|a| self.parse_expression(a))?;
+                
+                Some(Expr::BinaryOp {
+                    op: BinOp::Mul,
+                    left: Box::new(Expr::BinaryOp {
+                        op: BinOp::And,
+                        left: Box::new(cond),
+                        right: Box::new(then_expr),
+                    }),
+                    right: Box::new(else_expr),
+                })
+            }
+            
+            "SequenceExpression" => {
+                node.get("expressions")
+                    .and_then(|e| e.as_array())
+                    .and_then(|arr| arr.last())
+                    .and_then(|last| self.parse_expression(last))
+            }
+            
+            "NewExpression" => {
+                let callee = node.get("callee").and_then(|c| self.parse_expression(c))?;
+                let args = node.get("arguments")
+                    .and_then(|a| a.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|arg| self.parse_expression(arg))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                
+                if let Expr::Var(func_name) = &callee {
+                    Some(Expr::Call {
+                        func: format!("new_{}", func_name),
+                        args,
+                    })
+                } else {
+                    Some(Expr::Call {
+                        func: "new".to_string(),
+                        args,
+                    })
+                }
+            }
+            
+            "AwaitExpression" => {
+                node.get("argument")
+                    .and_then(|a| self.parse_expression(a))
+            }
+            
+            "YieldExpression" => {
+                node.get("argument")
+                    .and_then(|a| self.parse_expression(a))
+            }
+            
+            "MetaProperty" => {
+                Some(Expr::ConstNull)
             }
             
             "CallExpression" => {
@@ -516,10 +747,122 @@ impl JadeNative {
             }
             
             "AssignmentExpression" => {
+                let op = node.get("operator").and_then(|o| o.as_str()).unwrap_or("=");
+                let left = node.get("left").and_then(|l| self.parse_expression(l));
                 let right = node.get("right").and_then(|r| self.parse_expression(r))?;
                 
-                // 简化：将赋值作为表达式返回
-                Some(right)
+                match op {
+                    "=" => Some(right),
+                    "+=" => Some(Expr::BinaryOp {
+                        op: BinOp::Add,
+                        left: Box::new(left?),
+                        right: Box::new(right),
+                    }),
+                    "-=" => Some(Expr::BinaryOp {
+                        op: BinOp::Sub,
+                        left: Box::new(left?),
+                        right: Box::new(right),
+                    }),
+                    "*=" => Some(Expr::BinaryOp {
+                        op: BinOp::Mul,
+                        left: Box::new(left?),
+                        right: Box::new(right),
+                    }),
+                    "/=" => Some(Expr::BinaryOp {
+                        op: BinOp::Div,
+                        left: Box::new(left?),
+                        right: Box::new(right),
+                    }),
+                    "%=" => Some(Expr::BinaryOp {
+                        op: BinOp::Mod,
+                        left: Box::new(left?),
+                        right: Box::new(right),
+                    }),
+                    _ => Some(right),
+                }
+            }
+            
+            "LogicalExpression" => {
+                let op = node.get("operator").and_then(|o| o.as_str()).unwrap_or("&&");
+                let left = node.get("left").and_then(|l| self.parse_expression(l))?;
+                let right = node.get("right").and_then(|r| self.parse_expression(r))?;
+                
+                let bin_op = match op {
+                    "&&" => BinOp::And,
+                    "||" => BinOp::Or,
+                    "??" => BinOp::Or,
+                    _ => BinOp::And,
+                };
+                
+                Some(Expr::BinaryOp {
+                    op: bin_op,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                })
+            }
+            
+            "OptionalMemberExpression" => {
+                let obj = node.get("object").and_then(|o| self.parse_expression(o))?;
+                let prop = node.get("property")
+                    .and_then(|p| p.get("value").and_then(|v| v.as_str()))
+                    .or_else(|| node.get("property").and_then(|p| p.as_str()))
+                    .unwrap_or("_")
+                    .to_string();
+                
+                Some(Expr::FieldAccess {
+                    base: Box::new(obj),
+                    field: prop,
+                })
+            }
+            
+            "OptionalCallExpression" => {
+                let callee = node.get("callee").and_then(|c| self.parse_expression(c))?;
+                let args = node.get("arguments")
+                    .and_then(|a| a.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|arg| self.parse_expression(arg))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                
+                if let Expr::Var(func_name) = &callee {
+                    Some(Expr::Call {
+                        func: func_name.clone(),
+                        args,
+                    })
+                } else {
+                    Some(Expr::Call {
+                        func: "optional_call".to_string(),
+                        args,
+                    })
+                }
+            }
+            
+            "PrivateName" => {
+                let name = node.get("id")
+                    .and_then(|id| id.get("value"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("_")
+                    .to_string();
+                Some(Expr::Var(format!("private_{}", name)))
+            }
+            
+            "Super" => {
+                Some(Expr::Var("super".to_string()))
+            }
+            
+            "Import" => {
+                Some(Expr::ConstNull)
+            }
+            
+            "TaggedTemplateExpression" => {
+                node.get("quasi")
+                    .and_then(|q| self.parse_expression(q))
+            }
+            
+            "ClassExpression" => {
+                Some(Expr::ConstNull)
             }
             
             _ => None
