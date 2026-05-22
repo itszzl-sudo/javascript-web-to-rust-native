@@ -13,6 +13,7 @@ owo-colors.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+regex = "1.10"
 swc_core = { git = "https://github.com/swc-project/swc.git", rev = "4c44d5d52", features = ["ecma_parser", "common", "ecma_ast"] }
 cranelift-compiler = { path = "../cranelift-compiler" }
 

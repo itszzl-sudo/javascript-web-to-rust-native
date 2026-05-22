@@ -15,6 +15,12 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
+log = "0.4"
+base64 = "0.22"
+urlencoding = "2.1"
+
+# 可选网络下载功能
+ureq = { version = "2.9", optional = true }
 
 # DOM serialization (暂时用 serde_json)
 # rkyv = { workspace = true, features = ["std"] }
@@ -26,4 +32,8 @@ hashbrown = { workspace = true }
 # Cranelift 编译器工具链
 jrust-translator = { path = "../jrust-translator" }
 cranelift-compiler = { path = "../cranelift-compiler" }
+
+[features]
+default = []
+network = ["ureq"]
 

@@ -8,12 +8,21 @@ pub mod compiler;
 pub mod ir_gen;
 pub mod splitter;
 pub mod framework;
+pub mod external_deps;
+pub mod dep_processor;
 
 pub use compiler::{CompileResult, Compiler};
 pub use error::{Error, Result};
 pub use ir_gen::IrGenerator;
 pub use splitter::{CodeSplitter, SplitAnalysis, CodeRole};
 pub use framework::{Framework, detect_framework, FrameworkDetectionResult};
+pub use external_deps::{
+    ExternalDepDetector, ExternalDependency, ExternalDepType,
+    detect_external_deps,
+};
+pub use dep_processor::{
+    ExternalDepProcessor, ProcessError, process_external_deps,
+};
 
 pub fn compile(source: &str) -> Result<CompileResult> {
     let mut compiler = Compiler::new();

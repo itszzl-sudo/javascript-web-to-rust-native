@@ -10,6 +10,7 @@ pub mod director;
 pub mod bindings;
 pub mod comm;
 pub mod compiler;
+pub mod resource;
 // pub mod gc;
 // pub mod utils;
 
@@ -20,3 +21,4 @@ pub use director::*;
 pub use bindings::*;
 pub use comm::*;
 pub use compiler::*;
+pub use resource::*;

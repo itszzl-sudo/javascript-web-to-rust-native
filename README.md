@@ -4,16 +4,29 @@
 
 > **核心理念**: "浏览器不关心你的源码是什么框架，只关心最终能否执行 JavaScript"
 
+---
+
+## Jade - 诗咏
+君子温如玉，名器号 Jade。  
+一器御四域，持剑下云阶。  
+八派横剑气，诸锋各自裂。  
+谁言碎难补？一碗盛残月。  
+炉火煅新璧，端上琉璃碟。  
+把盏临窗坐，此世已无缺。
+
+---
+
 ## 特性
 
 - **通用性**: 支持所有打包后的 JavaScript 代码
 - **高性能**: Rust 零成本抽象 + Cranelift JIT
 - **内存安全**: Rust 所有权系统消除内存漏洞
 - **跨平台**: Windows / macOS / Linux / iOS / Android
+- **离线运行**: 自动下载并嵌入 CDN JS、字体、图片资源
 
 ## 项目状态
 
-**总体完成度**: ~90% | **当前阶段**: Phase 3 完成
+**总体完成度**: ~95% | **当前阶段**: Phase 3 完成
 
 | 组件 | 状态 | 测试 |
 |------|------|------|
@@ -22,6 +35,18 @@
 | cranelift-compiler | ✅ 完成 | - |
 | director | ✅ 完成 | - |
 | jrust-browser | ✅ 完成 | 3 passed |
+| jade-native | ✅ 完成 | 已验证 |
+
+## 资源处理
+
+Jade 自动处理外部依赖：
+
+- **CDN JavaScript** - 自动下载并转译为 Rust
+- **Google Fonts** - 自动下载字体文件
+- **网络图片** - 自动下载并嵌入
+- **不支持依赖** (fetch/WebSocket) - 弹框提示后退出
+
+详见 [资源加载指南](docs/RESOURCE_LOADING.md) 和 [已知限制](docs/KNOWN_ISSUES.md)
 
 ## 项目结构
 
@@ -65,10 +90,29 @@ cargo test
 ## 工作原理
 
 ```
-任意前端项目 → 打包工具 → 标准 JavaScript 
-    → jrust-translator → Rust 代码 
-    → jrust-runtime → 原生二进制
+JavaScript → SWC 解析 → IR → Cranelift 编译 → .obj → link.exe (.NET 4) → .exe/.dll
+                ↓
+            Rust 源码 + Cargo.toml (配套交付)
 ```
+
+### 编译流程
+
+```bash
+# 1. Jade 编译 (Cranelift + .NET Framework)
+jade compile app.js --output my-app
+
+# 生成文件:
+#   my-app.rs       - Rust 源码 (egui GUI)
+#   Cargo.toml      - Cargo 配置
+#   my-app.obj      - COFF 目标文件
+#   my-app.exe      - 原生可执行文件
+```
+
+### 工具链
+
+- **Cranelift** - JIT 编译器，生成 COFF 目标文件
+- **link.exe** - MSVC 链接器 (项目内 toolchain/)
+- **.NET Framework 4.0-4.8** - Windows 系统库链接器依赖
 
 ## 许可证
 
