@@ -80,6 +80,7 @@ class Director {
     console.log(`✅ Functions: ${ir.functions.length}`);
     console.log(`   Globals: ${ir.globals.length}`);
     console.log(`   Imports: ${ir.imports.length}`);
+    console.log(`   programJson type: ${typeof ir.programJson}, length: ${ir.programJson ? ir.programJson.length : 'N/A'}`);
 
     // 输出 Rust 源码
     const rustSource = this.generateRustSource(ir, outputName);
@@ -94,7 +95,7 @@ class Director {
     console.log(`✅ Cargo.toml: ${cargoPath}`);
 
     console.log('\n3. Generating native code (Cranelift)...');
-    const objBytes = compiler.generateCode(JSON.stringify(ir));
+    const objBytes = compiler.generateCode(ir.programJson);
     console.log(`✅ Object file: ${objBytes.length} bytes`);
     
     // 保存 .obj 文件

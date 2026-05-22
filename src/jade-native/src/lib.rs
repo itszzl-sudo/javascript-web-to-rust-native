@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 #[napi(object)]
 pub struct IrResult {
+    pub program_json: String,
     pub functions: Vec<String>,
     pub globals: Vec<String>,
     pub imports: Vec<String>,
@@ -63,7 +64,11 @@ impl JadeNative {
         
         program.modules.push(module);
         
+        let program_json = serde_json::to_string(&program)
+            .map_err(|e| Error::from_reason(format!("Program serialize error: {}", e)))?;
+        
         Ok(IrResult {
+            program_json,
             functions: program.modules.iter()
                 .flat_map(|m| m.functions.keys().cloned())
                 .collect(),
@@ -76,11 +81,9 @@ impl JadeNative {
     }
 
     #[napi]
-    pub fn generate_code(&self, ir_json: String) -> Result<Buffer> {
-        let _ir: serde_json::Value = serde_json::from_str(&ir_json)
-            .map_err(|e| Error::from_reason(format!("IR parse error: {}", e)))?;
-        
-        let program = Program::new();
+    pub fn generate_code(&self, program_json: String) -> Result<Buffer> {
+        let program: Program = serde_json::from_str(&program_json)
+            .map_err(|e| Error::from_reason(format!("Program parse error: {}", e)))?;
         
         let compiler = CraneliftCompiler::with_target(&self.target)
             .map_err(|e| Error::from_reason(e))?;

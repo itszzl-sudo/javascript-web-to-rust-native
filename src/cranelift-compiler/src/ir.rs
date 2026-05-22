@@ -1,6 +1,7 @@
 use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum IrType {
     Void,
     I32,
@@ -14,20 +15,20 @@ pub enum IrType {
     Array(Box<IrType>, usize),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Param {
     pub name: String,
     pub ty: IrType,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LocalVar {
     pub name: String,
     pub ty: IrType,
     pub init: Option<Expr>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Expr {
     ConstI32(i32),
     ConstI64(i64),
@@ -77,7 +78,7 @@ pub enum Expr {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BinOp {
     Add,
     Sub,
@@ -99,7 +100,7 @@ pub enum BinOp {
     Shr,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum UnaryOp {
     Neg,
     Not,
@@ -107,7 +108,7 @@ pub enum UnaryOp {
     Ref,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Stmt {
     VarDecl(LocalVar),
     Assign {
@@ -138,7 +139,7 @@ pub enum Stmt {
     Block(Vec<Stmt>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Function {
     pub name: String,
     pub params: Vec<Param>,
@@ -148,21 +149,21 @@ pub struct Function {
     pub is_extern: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Struct {
     pub name: String,
     pub fields: Vec<(String, IrType)>,
     pub is_pub: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Enum {
     pub name: String,
     pub variants: Vec<(String, Option<IrType>)>,
     pub is_pub: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Module {
     pub name: String,
     pub functions: HashMap<String, Function>,
@@ -197,14 +198,14 @@ impl Module {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Program {
     pub modules: Vec<Module>,
     pub entry_point: Option<String>,
     pub bridge_api: BridgeApi,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BridgeApi {
     pub create_bridge: String,
     pub set_html: String,
