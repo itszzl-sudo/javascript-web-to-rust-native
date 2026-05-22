@@ -63,6 +63,10 @@ impl BrowserConfig {
 pub struct BrowserInstance {
     bridge: RealServoBridge,
     config: BrowserConfig,
+    /// Cached render output (invalidated on content change)
+    render_cache: Option<Vec<u8>>,
+    /// Whether render cache is valid
+    cache_valid: bool,
 }
 
 impl BrowserInstance {
@@ -78,30 +82,57 @@ impl BrowserInstance {
 
         println!("✅ Browser instance created successfully!");
 
-        Ok(Self { bridge, config })
+        Ok(Self { 
+            bridge, 
+            config,
+            render_cache: None,
+            cache_valid: false,
+        })
     }
 
     /// Set HTML content
     pub fn set_html(&mut self, html: &str) -> Result<(), String> {
         self.bridge.set_html(html);
+        self.cache_valid = false;
         Ok(())
     }
 
     /// Set CSS content
     pub fn set_css(&mut self, css: &str) -> Result<(), String> {
         self.bridge.set_css(css);
+        self.cache_valid = false;
         Ok(())
     }
 
     /// Set style for an element
     pub fn set_style(&mut self, selector: &str, property: &str, value: &str) -> Result<(), String> {
         self.bridge.set_style(selector, property, value);
+        self.cache_valid = false;
+        Ok(())
+    }
+    
+    /// Batch set multiple styles (more efficient than individual calls)
+    pub fn set_styles(&mut self, styles: &[(&str, &str, &str)]) -> Result<(), String> {
+        for (selector, property, value) in styles {
+            self.bridge.set_style(selector, *property, *value);
+        }
+        self.cache_valid = false;
+        Ok(())
+    }
+    
+    /// Batch set styles for a single element
+    pub fn set_element_styles(&mut self, selector: &str, styles: &[(&str, &str)]) -> Result<(), String> {
+        for (property, value) in styles {
+            self.bridge.set_style(selector, *property, *value);
+        }
+        self.cache_valid = false;
         Ok(())
     }
 
     /// Clear all custom CSS
     pub fn clear_css(&mut self) {
         self.bridge.clear_css();
+        self.cache_valid = false;
     }
 
     /// Query element by selector
@@ -145,9 +176,29 @@ impl BrowserInstance {
         self.bridge.eval_js(code)
     }
 
-    /// Render the current state and get PNG bytes
+    /// Render the current state and get PNG bytes (cached)
     pub fn render(&mut self) -> Vec<u8> {
-        self.bridge.render()
+        if self.cache_valid {
+            if let Some(ref cached) = self.render_cache {
+                return cached.clone();
+            }
+        }
+        
+        let png = self.bridge.render();
+        self.render_cache = Some(png.clone());
+        self.cache_valid = true;
+        png
+    }
+    
+    /// Force re-render (ignore cache)
+    pub fn render_force(&mut self) -> Vec<u8> {
+        self.cache_valid = false;
+        self.render()
+    }
+    
+    /// Invalidate render cache
+    pub fn invalidate_cache(&mut self) {
+        self.cache_valid = false;
     }
 
     /// Get element rectangle
@@ -203,6 +254,7 @@ impl BrowserInstance {
     /// Set viewport size
     pub fn set_viewport(&mut self, width: u32, height: u32) {
         self.bridge.set_viewport(width, height);
+        self.cache_valid = false;
     }
 
     // ── 网络请求 ──

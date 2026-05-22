@@ -9,6 +9,17 @@ members = [
     "src/binding-generator",
     "src/cranelift-compiler",
     "src/jade-native",
+    "src/jrust-platform",
+    "src/jrust-ios",
+    "src/jrust-android",
+]
+
+[workspace.metadata.cross]
+targets = [
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+    "aarch64-linux-android",
+    "x86_64-linux-android",
 ]
 
 [workspace.package]

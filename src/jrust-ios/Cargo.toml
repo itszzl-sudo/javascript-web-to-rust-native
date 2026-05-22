@@ -1,0 +1,21 @@
+[package]
+name = "jrust-ios"
+version = "0.1.0"
+edition = "2021"
+description = "iOS platform support for JRust (SwiftUI/UIKit)"
+
+[dependencies]
+jrust-platform = { path = "../jrust-platform" }
+objc = "0.2"
+block = "0.1"
+dispatch = "0.2"
+
+[lib]
+name = "jrust_ios"
+path = "src/lib.rs"
+crate-type = ["staticlib", "cdylib"]
+
+[features]
+default = []
+swiftui = []
+uikit = []

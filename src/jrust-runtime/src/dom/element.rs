@@ -4,6 +4,8 @@ use crate::core::JsValue;
 use crate::dom::events::{Event, EventType, EventTarget};
 use serde::{Serialize, Deserialize};
 
+type EventHandler = Box<dyn Fn(&Event) -> JsValue>;
+
 #[derive(Serialize, Deserialize)]
 pub struct Element {
     pub tag_name: String,
@@ -14,7 +16,9 @@ pub struct Element {
     pub text_content: String,
     pub inner_html: String,
     #[serde(skip)]
-    event_listeners: HashMap<EventType, Vec<Box<dyn Fn(&Event) -> JsValue>>>,
+    event_listeners: HashMap<EventType, Vec<(usize, EventHandler)>>,
+    #[serde(skip)]
+    next_handler_id: usize,
 }
 
 impl std::fmt::Debug for Element {
@@ -41,7 +45,8 @@ impl Clone for Element {
             children: self.children.clone(),
             text_content: self.text_content.clone(),
             inner_html: self.inner_html.clone(),
-            event_listeners: HashMap::new(), // 不克隆事件监听器
+            event_listeners: HashMap::new(),
+            next_handler_id: 0,
         }
     }
 }
@@ -57,6 +62,7 @@ impl Element {
             text_content: String::new(),
             inner_html: String::new(),
             event_listeners: HashMap::new(),
+            next_handler_id: 0,
         }
     }
 
@@ -187,18 +193,32 @@ impl Element {
 
 impl EventTarget for Element {
     fn add_event_listener(&mut self, event_type: EventType, handler: Box<dyn Fn(&Event) -> JsValue>) {
-        self.event_listeners.entry(event_type).or_insert_with(Vec::new).push(handler);
+        let handler_id = self.next_handler_id;
+        self.next_handler_id += 1;
+        self.event_listeners
+            .entry(event_type)
+            .or_insert_with(Vec::new)
+            .push((handler_id, handler));
     }
 
-    fn remove_event_listener(&mut self, _event_type: EventType, _handler: Box<dyn Fn(&Event) -> JsValue>) {
-        // Implementation for removing event listeners
+    fn remove_event_listener(&mut self, event_type: EventType, handler_id: usize) {
+        if let Some(handlers) = self.event_listeners.get_mut(&event_type) {
+            handlers.retain(|(id, _)| *id != handler_id);
+        }
     }
 
     fn dispatch_event(&self, event: Event) {
-        if let Some(handlers) = self.event_listeners.get(&event.event_type()) {
-            for handler in handlers {
+        if let Some(handlers) = self.event_listeners.get(event.event_type()) {
+            for (_, handler) in handlers {
+                if event.propagation_stopped() {
+                    break;
+                }
                 handler(&event);
             }
         }
+    }
+    
+    fn has_event_listener(&self, event_type: &EventType) -> bool {
+        self.event_listeners.get(event_type).map(|h| !h.is_empty()).unwrap_or(false)
     }
 }

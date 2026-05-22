@@ -1,0 +1,11 @@
+[target.aarch64-apple-ios]
+image = "ghcr.io/cross-rs/aarch64-apple-ios:0.2"
+
+[target.aarch64-apple-ios-sim]
+image = "ghcr.io/cross-rs/aarch64-apple-ios-sim:0.2"
+
+[target.aarch64-linux-android]
+image = "ghcr.io/cross-rs/aarch64-linux-android:0.2"
+
+[target.x86_64-linux-android]
+image = "ghcr.io/cross-rs/x86_64-linux-android:0.2"
