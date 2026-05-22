@@ -2,6 +2,39 @@
 
 JavaScript to Native compiler. **No binary download required.**
 
+## Quick Start
+
+```bash
+# 安装
+npm install -g @irisverse/jade
+
+# 创建项目
+jade init my-app
+
+# 开发
+cd my-app
+jade dev
+
+# 构建
+jade build
+
+# 移动端
+jade mobile ios
+jade mobile android
+```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `jade init <name>` | Create new project |
+| `jade build` | Build project |
+| `jade dev` | Development mode (watch) |
+| `jade serve [port]` | Serve dist directory |
+| `jade mobile <platform>` | Build for mobile |
+| `jade link <obj>` | Link object file |
+| `jade pack <obj>` | Pack to library |
+
 ## Architecture
 
 ```
