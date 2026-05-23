@@ -10,6 +10,7 @@ pub mod splitter;
 pub mod framework;
 pub mod external_deps;
 pub mod dep_processor;
+pub mod resource;
 
 pub use compiler::{CompileResult, Compiler};
 pub use error::{Error, Result};

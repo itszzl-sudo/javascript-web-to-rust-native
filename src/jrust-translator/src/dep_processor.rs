@@ -81,11 +81,11 @@ impl ExternalDepProcessor {
     }
     
     fn process_js_dep(&mut self, dep: &ExternalDependency) -> Result<PathBuf, ProcessError> {
-        println!("\n{'='}{}{'='}", "=".repeat(60));
+        println!("\n{}{}{}", "=".repeat(60), "=", "=".repeat(60));
         println!("🔧 发现外部 JavaScript");
         println!("   URL: {}", dep.url);
         println!("   来源: {}", dep.source);
-        println!("{'='}{}{'='}\n", "=".repeat(60));
+        println!("{}{}{}\n", "=".repeat(60), "=", "=".repeat(60));
         
         let downloaded = self.download_with_retry(&dep.url, "JavaScript")?;
         
@@ -97,10 +97,10 @@ impl ExternalDepProcessor {
     }
     
     fn process_font_dep(&mut self, dep: &ExternalDependency) -> Result<PathBuf, ProcessError> {
-        println!("\n{'='}{}{'='}", "=".repeat(60));
+        println!("\n{}{}{}", "=".repeat(60), "=", "=".repeat(60));
         println!("🔤 发现外部字体");
         println!("   URL: {}", dep.url);
-        println!("{'='}{}{'='}\n", "=".repeat(60));
+        println!("{}{}{}\n", "=".repeat(60), "=", "=".repeat(60));
         
         let font_dir = self.output_dir.join("fonts");
         std::fs::create_dir_all(&font_dir)?;
@@ -112,10 +112,10 @@ impl ExternalDepProcessor {
     }
     
     fn process_image_dep(&mut self, dep: &ExternalDependency) -> Result<PathBuf, ProcessError> {
-        println!("\n{'='}{}{'='}", "=".repeat(60));
+        println!("\n{}{}{}", "=".repeat(60), "=", "=".repeat(60));
         println!("🖼️  发现外部图片");
         println!("   URL: {}", dep.url);
-        println!("{'='}{}{'='}\n", "=".repeat(60));
+        println!("{}{}{}\n", "=".repeat(60), "=", "=".repeat(60));
         
         let image_dir = self.output_dir.join("images");
         std::fs::create_dir_all(&image_dir)?;
@@ -127,9 +127,9 @@ impl ExternalDepProcessor {
     }
     
     fn handle_unsupported_deps(&self, deps: Vec<&ExternalDependency>) -> Result<(), ProcessError> {
-        println!("\n{'='}{}{'='}", "=".repeat(60));
+        println!("\n{}{}{}", "=".repeat(60), "=", "=".repeat(60));
         println!("⚠️  发现不支持的外部依赖");
-        println!("{'='}{}{'='}\n", "=".repeat(60));
+        println!("{}{}{}\n", "=".repeat(60), "=", "=".repeat(60));
         
         for dep in deps {
             println!("❌ 类型: 其他");
@@ -184,11 +184,11 @@ impl ExternalDepProcessor {
             }
         }
         
-        println!("\n{'='}{}{'='}", "=".repeat(60));
+        println!("\n{}{}{}", "=".repeat(60), "=", "=".repeat(60));
         println!("❌ 下载失败");
         println!("   URL: {}", url);
         println!("   重试 {} 次后仍失败，退出 Jade", MAX_RETRIES);
-        println!("{'='}{}{'='}\n", "=".repeat(60));
+        println!("{}{}{}\n", "=".repeat(60), "=", "=".repeat(60));
         std::process::exit(1);
     }
     

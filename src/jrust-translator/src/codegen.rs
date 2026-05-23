@@ -96,11 +96,25 @@ impl CodeGen {
 
         match stmt {
             Statement::ExpressionStatement { expression, .. } => {
+                // 检测 IIFE: || { ... }() 或 (function() { ... })()
+                if let Expression::CallExpression { callee, arguments, .. } = expression {
+                    let is_iife = matches!(
+                        callee.as_ref(),
+                        Expression::ArrowFunctionExpression { .. } | 
+                        Expression::FunctionExpression { .. }
+                    );
+                    
+                    if is_iife && arguments.is_empty() {
+                        let callee_code = self.generate_expression(callee, depth)?;
+                        return Ok(format!("{{ let _iife = {}; _iife(); }}", callee_code));
+                    }
+                }
+                
                 let expr_code = self.generate_expression(expression, depth)?;
                 if expr_code.trim().is_empty() {
                     Ok(String::new())
                 } else {
-                    Ok(expr_code)
+                    Ok(format!("{};", expr_code))
                 }
             }
             Statement::VariableDeclaration {
@@ -116,14 +130,8 @@ impl CodeGen {
                 };
                 for decl in declarations {
                     let name = self.get_pattern_name(&decl.id);
-                    if self.functions.contains_key(&name) {
-                        output.push_str("fn ");
-                        output.push_str(&name);
-                        output.push_str("()");
-                    } else {
-                        self.used_variables.insert(name.clone(), true);
-                        output.push_str(&format!("{} {}", keyword, name));
-                    }
+                    self.used_variables.insert(name.clone(), true);
+                    output.push_str(&format!("{} {}", keyword, name));
                     output.push_str(" = ");
                     if let Some(init) = &decl.init {
                         output.push_str(&self.generate_expression(init, depth)?);
@@ -218,10 +226,31 @@ impl CodeGen {
                 body,
                 ..
             } => {
-                let mut output = String::from("for ");
+                let mut output = String::new();
+                
+                // C 风格 for 循环转换为 while 循环
+                
+                // 初始化部分
                 match init {
                     Some(crate::ast::ForStatementInit::Variable(stmt)) => {
-                        output.push_str(&self.generate_statement(stmt.as_ref(), depth)?);
+                        if let Statement::VariableDeclaration { declarations, kind, .. } = stmt.as_ref() {
+                            let keyword = match kind {
+                                VariableDeclarationKind::Var => "let mut",
+                                VariableDeclarationKind::Let => "let",
+                                VariableDeclarationKind::Const => "let",
+                            };
+                            let decls: Vec<String> = declarations.iter()
+                                .map(|decl| {
+                                    let name = self.get_pattern_name(&decl.id);
+                                    if let Some(init_expr) = &decl.init {
+                                        format!("{} = {}", name, self.generate_expression(init_expr, depth).unwrap_or_default())
+                                    } else {
+                                        name
+                                    }
+                                })
+                                .collect();
+                            output.push_str(&format!("{} {};", keyword, decls.join(", ")));
+                        }
                     }
                     Some(crate::ast::ForStatementInit::Expression(expr)) => {
                         output.push_str(&self.generate_expression(expr, depth)?);
@@ -230,34 +259,39 @@ impl CodeGen {
                     None => {}
                 }
 
+                // while 循环
+                output.push_str(" while ");
                 let test_expr = test.as_ref()
                     .map(|e| self.generate_expression(e, depth))
                     .unwrap_or(Ok(String::from("true")))?;
-                let update_expr = update.as_ref()
-                    .map(|e| self.generate_expression(e, depth))
-                    .unwrap_or(Ok(String::new()))?;
+                output.push_str(&test_expr);
+                output.push_str(" { ");
 
-                output.push_str(&format!("; {}; {} ", test_expr, update_expr));
-
-                let label = format!("_loop_{}", self.continue_labels.len());
-                self.continue_labels.push(label.clone());
-
+                // 循环体
                 if matches!(body.as_ref(), Statement::BlockStatement { .. }) {
-                    output.push_str(&self.generate_statement(body.as_ref(), depth)?);
+                    if let Statement::BlockStatement { body: block_body, .. } = body.as_ref() {
+                        for stmt in block_body {
+                            let stmt_code = self.generate_statement(stmt, depth + 1)?;
+                            output.push_str(&stmt_code);
+                            if !stmt_code.trim().ends_with(';') && !stmt_code.trim().ends_with('}') {
+                                output.push(';');
+                            }
+                        }
+                    }
                 } else {
-                    output.push_str("{\n");
-                    self.indent += 1;
-                    output.push_str(&self.indent_str());
-                    output.push_str(&self.generate_statement(body.as_ref(), depth + 1)?);
-                    output.push('\n');
-                    output.push_str(&self.indent_str());
-                    output.push_str(&format!("{};\n", update_expr));
-                    self.indent -= 1;
-                    output.push_str(&self.indent_str());
-                    output.push_str("}\n");
+                    let body_code = self.generate_statement(body.as_ref(), depth + 1)?;
+                    output.push_str(&body_code);
                 }
 
-                self.continue_labels.pop();
+                // 更新部分
+                if let Some(upd) = update.as_ref() {
+                    output.push_str(" ");
+                    output.push_str(&self.generate_expression(upd, depth)?);
+                    output.push(';');
+                }
+
+                output.push_str(" }");
+
                 Ok(output)
             }
             Statement::WhileStatement { test, body, .. } => {
@@ -378,13 +412,21 @@ impl CodeGen {
                 let left_code = self.generate_for_statement_left(left)?;
                 let right_code = self.generate_expression(right, depth)?;
                 let body_code = self.generate_statement(body, depth)?;
-                Ok(format!("for {} in {} {}", left_code, right_code, body_code))
+                if matches!(body.as_ref(), Statement::BlockStatement { .. }) {
+                    Ok(format!("for {} in {} {}", left_code, right_code, body_code))
+                } else {
+                    Ok(format!("for {} in {} {{ {} }}", left_code, right_code, body_code))
+                }
             }
             Statement::ForOfStatement { left, right, body, .. } => {
                 let left_code = self.generate_for_statement_left(left)?;
                 let right_code = self.generate_expression(right, depth)?;
                 let body_code = self.generate_statement(body, depth)?;
-                Ok(format!("for {} in {} {}", left_code, right_code, body_code))
+                if matches!(body.as_ref(), Statement::BlockStatement { .. }) {
+                    Ok(format!("for {} in {} {}", left_code, right_code, body_code))
+                } else {
+                    Ok(format!("for {} in {} {{ {} }}", left_code, right_code, body_code))
+                }
             }
             Statement::DebuggerStatement { .. } => Ok(String::from(COMMENT_DEBUGGER)),
             Statement::WithStatement { object, body, .. } => {
@@ -428,15 +470,10 @@ impl CodeGen {
             crate::ast::ForStatementLeft::Variable(stmt) => {
                 let mut output = String::new();
                 if let Statement::VariableDeclaration { declarations, kind, .. } = stmt.as_ref() {
-                    match kind {
-                        VariableDeclarationKind::Var => output.push_str("let mut "),
-                        VariableDeclarationKind::Let => output.push_str("let "),
-                        VariableDeclarationKind::Const => output.push_str("let "),
-                    }
-                    for decl in declarations {
-                        let name = self.get_pattern_name(&decl.id);
-                        output.push_str(&name);
-                    }
+                    let mut_names: Vec<String> = declarations.iter()
+                        .map(|decl| self.get_pattern_name(&decl.id))
+                        .collect();
+                    output.push_str(&mut_names.join(", "));
                 }
                 Ok(output)
             }
@@ -536,9 +573,9 @@ impl CodeGen {
                     "-="
                 };
                 if *prefix {
-                    Ok(format!("{{ {}; {} - 1 }}", format!("{} {} 1;", arg_code, op), arg_code))
+                    Ok(format!("{} {} 1", arg_code, op))
                 } else {
-                    Ok(format!("{{ {} {} 1; {} }}", arg_code, op, arg_code))
+                    Ok(format!("{} {} 1", arg_code, op))
                 }
             }
             Expression::AssignmentExpression { operator, left, right, .. } => {
