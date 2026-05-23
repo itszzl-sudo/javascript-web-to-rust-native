@@ -1,0 +1,20 @@
+{
+  "name": "jade-native",
+  "version": "0.1.0",
+  "napi": {
+    "name": "jade-native",
+    "triples": {
+      "defaults": false,
+      "additional": [
+        "x86_64-pc-windows-msvc"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "napi build --release",
+    "prepublishOnly": "napi prepublish -t npm"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.0"
+  }
+}

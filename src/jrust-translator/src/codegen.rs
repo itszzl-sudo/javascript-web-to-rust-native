@@ -718,7 +718,13 @@ impl CodeGen {
                     .collect();
                 match body.as_ref() {
                     crate::ast::ArrowFunctionBody::Expression(expr) => {
-                        Ok(format!("|{}| {}", param_names.join(", "), self.generate_expression(expr, depth)?))
+                        let expr_code = self.generate_expression(expr, depth)?;
+                        // 复杂表达式需要包裹在块中
+                        if expr_code.contains("if ") || expr_code.contains("match ") || expr_code.len() > 100 {
+                            Ok(format!("|{}| {{ {} }}", param_names.join(", "), expr_code))
+                        } else {
+                            Ok(format!("|{}| {}", param_names.join(", "), expr_code))
+                        }
                     }
                     crate::ast::ArrowFunctionBody::BlockFunctionBody(body) => {
                         let mut output = String::from("|");
