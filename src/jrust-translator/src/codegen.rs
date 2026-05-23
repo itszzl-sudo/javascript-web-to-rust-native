@@ -704,7 +704,7 @@ impl CodeGen {
                 let test_code = self.generate_expression(test, depth)?;
                 let cons_code = self.generate_expression(consequent, depth)?;
                 let alt_code = self.generate_expression(alternate, depth)?;
-                Ok(format!("if {} {{ {} }} else {{ {} }}", test_code, cons_code, alt_code))
+                Ok(format!("if ({}) {{ {} }} else {{ {} }}", test_code, cons_code, alt_code))
             }
             Expression::TemplateLiteral { quasis, expressions, .. } => {
                 let mut output = String::from("format!(\"");
@@ -780,11 +780,15 @@ impl CodeGen {
                 Ok(format!("{}({})", tag_code, quasi_code))
             }
             Expression::SequenceExpression { expressions, .. } => {
-                let codes: Vec<String> = expressions
-                    .iter()
-                    .map(|e| self.generate_expression(e, depth))
-                    .collect::<Result<Vec<_>>>()?;
-                Ok(codes.join(", "))
+                if expressions.len() == 1 {
+                    self.generate_expression(&expressions[0], depth)
+                } else {
+                    let codes: Vec<String> = expressions
+                        .iter()
+                        .map(|e| self.generate_expression(e, depth))
+                        .collect::<Result<Vec<_>>>()?;
+                    Ok(format!("{{ {} }}", codes.join("; ")))
+                }
             }
         }
     }
