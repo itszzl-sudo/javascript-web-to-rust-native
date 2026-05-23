@@ -141,7 +141,8 @@ mod tests {
     fn test_for_loop() {
         let source = "for (let i = 0; i < 10; i++) { x = i; }";
         let result = compile(source).unwrap();
-        assert!(result.code.contains("for"));
+        // for 循环转换为 while
+        assert!(result.code.contains("while"));
     }
 
     #[test]
@@ -433,7 +434,8 @@ mod tests {
     fn test_nested_for() {
         let source = "for (let i = 0; i < 3; i++) { for (let j = 0; j < 3; j++) { x = i + j; } }";
         let result = compile(source).unwrap();
-        assert!(result.code.contains("for"));
+        // for 循环转换为 while
+        assert!(result.code.contains("while"));
     }
 
     #[test]
