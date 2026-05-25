@@ -28,7 +28,17 @@ TypeScript → ts-native → Extensions → .exe (10-14KB + extensions)
 
 **适用**：纯计算、命令行工具、简单 DOM 渲染
 
-**状态**：扩展机制完成 ✅，集成进行中 ⏳
+**状态**：核心完成 ✅
+- 编译器：ts-native v0.1.6
+- 运行时：ts-native-runtime v0.1.0
+- 扩展包：stdlib + dom (事件系统)
+- 链接器：jade/link.exe 集成
+
+**核心特性**：
+- 插件机制：Cargo metadata 识别
+- 事件系统：分发器 + 联动事件
+- DOM API：与 jrust-browser 集成
+- 体积优势：10KB vs 2MB
 
 **体积优势**：
 
@@ -37,7 +47,7 @@ TypeScript → ts-native → Extensions → .exe (10-14KB + extensions)
 | 纯计算 | ~2MB | 10-14KB |
 | DOM 渲染 | ~2MB | ~500KB |
 
-详见 [ts-native 集成方案](docs/TS_NATIVE_INTEGRATION.md)
+详见 [ts-native 技术路径](../TS-NATIVE-PATH.md)
 
 ---
 
