@@ -1,8 +1,43 @@
-# JavaScript-Web-to-Rust-Native
+# JavaScript-Web-to-Rust-Native (Jade)
 
 将任意打包后的 JavaScript 代码编译为原生 Rust 二进制程序。
 
 > **核心理念**: "浏览器不关心你的源码是什么框架，只关心最终能否执行 JavaScript"
+
+---
+
+## 编译路径
+
+Jade 提供**两条编译路径**，灵活选择：
+
+### 路径 1：jrust 路径（完整 Web 应用）
+
+```
+JavaScript → SWC → jrust-translator → jrust-runtime → .exe (~2MB)
+```
+
+**适用**：完整 Web 应用（Vue/React/Angular + DOM + 事件）
+
+**状态**：~95% 完成 ✅
+
+### 路径 2：ts-native 路径（纯计算 + 可选 DOM）
+
+```
+TypeScript → ts-native → Extensions → .exe (10-14KB + extensions)
+```
+
+**适用**：纯计算、命令行工具、简单 DOM 渲染
+
+**状态**：扩展机制完成 ✅，集成进行中 ⏳
+
+**体积优势**：
+
+| 场景 | jrust 路径 | ts-native 路径 |
+|------|-----------|---------------|
+| 纯计算 | ~2MB | 10-14KB |
+| DOM 渲染 | ~2MB | ~500KB |
+
+详见 [ts-native 集成方案](docs/TS_NATIVE_INTEGRATION.md)
 
 ---
 

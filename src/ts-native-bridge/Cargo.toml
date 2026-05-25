@@ -1,0 +1,16 @@
+[package]
+name = "ts-native-bridge"
+version = "0.1.0"
+edition = "2021"
+description = "Bridge between ts-native compiler and javascript-web-to-rust-native"
+license = "MIT OR Apache-2.0"
+authors = ["CodeArts <codearts@huawei.com>"]
+
+[dependencies]
+anyhow = "1.0"
+regex = "1.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+tempfile = "3.10"
